@@ -1,0 +1,17 @@
+#include <stdio.h>
+
+int main() {
+
+    int c;
+
+    printf ("%s \n", "Welcome to my C code");
+
+    do {
+        c = fgetc(stdin);
+        fputc (c, stdout);
+    } while( c != EOF);
+
+    printf ("%s \n", "Good bye");
+
+}
+
