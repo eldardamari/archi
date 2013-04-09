@@ -4,7 +4,7 @@
 void bubbleSort(int numbers[], int array_size)
 {
   int i, j;
-  int * temp;
+  int  *temp;
   for (i = (array_size - 1); i > 0; i--)
   {
     for (j = 1; j <= i; j++)
@@ -15,10 +15,10 @@ void bubbleSort(int numbers[], int array_size)
         *temp = numbers[j-1];
         numbers[j-1] = numbers[j];
         numbers[j] = *temp;
+        free (temp); /*free allocation memory of temp */
       }
     }
   }
-  free (temp); /*free allocation memory of temp */
 }
       
 int main(int argc, char **argv) {
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   for(i = 0; i<n; ++i)
     printf(" %d", numbers[i]);
   printf("\n");
-
+  
   free (numbers); /*free allocation memory of numbers */
   return 0;
 }
