@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   int i, n = argc-1;
   int * numbers=(int*)calloc(n,sizeof(int));
   printf("Original array:");
-  for(i = 0; i<n; i++){ /* Array access undefined area - ++i & i<=n*/
+  for(i = 0; i<n; ++i){ /* Array access undefined area - i<=n*/
     printf(" %s", arr[i]);
     numbers[i]=atoi(arr[i]);
   }
