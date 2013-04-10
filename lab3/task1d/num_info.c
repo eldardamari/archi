@@ -290,11 +290,12 @@ int main(int argc, char **argv) {
      * than 5. */
 
     link *newoddlist = NULL;
+    link *greatert5 = NULL;
     int res = 0;
 
     newoddlist = map(list,odd);
-    newoddlist = map(newoddlist,gt5);
-    res = reduce(newoddlist,max,0);
+    greatert5 = map(newoddlist,gt5);
+    res = reduce(greatert5,max,0);
 
     
     printf("Max(odd and greater thab 5): %d\n",res);
@@ -311,6 +312,7 @@ int main(int argc, char **argv) {
     list_free(list);
     list_free(newoddlist);
     list_free(newsqrtlist);
+    list_free(greatert5);
 
     fclose (file);        
     return 0;
