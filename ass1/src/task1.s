@@ -12,17 +12,20 @@ section .text
 	extern printf
 
 my_func:
-	push	ebp
-	mov	ebp, esp	; Entry code - set up ebp and esp
-	pusha			; Save registers
+    mov eax, ecx
+    mov cl, 0
 
-	mov ecx, dword [ebp+8]	; Get argument (pointer to string)
-    
-    mov edx, byte[ecx] ; Getting the number from string
-    shl edx, [ax]      ; Shift left
+loop:
+    mov edx, eax
+    shl edx, cl
+    add cl, 4
+    add ebx,[ecx]
 
+    inc eax
+    cmp byte[eax], 0
+    jnz loop
 
-
+    mov ebx,1
 	
 	push	dword[LC1]		; Call printf with 2 arguments: pointer to str
 	push	LC0		; and pointer to format string.
