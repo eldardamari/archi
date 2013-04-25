@@ -17,8 +17,12 @@ my_func:
 	pusha			; Save registers
 
 	mov ecx, dword [ebp+8]	; Get argument (pointer to string)
+    
+    mov edx, byte[ecx] ; Getting the number from string
+    shl edx, [ax]      ; Shift left
 
-;       Your code should be here...
+
+
 	
 	push	dword[LC1]		; Call printf with 2 arguments: pointer to str
 	push	LC0		; and pointer to format string.
