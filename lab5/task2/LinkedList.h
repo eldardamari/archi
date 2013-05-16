@@ -13,4 +13,4 @@ void setData(varset *head,char* name,char* value);
 void findAndDestoryLink(varset* head,char *nametodel);
 void printall(varset* head);
 char *getName(varset *head,char * str);
-void freeall();
+void freeall(varset *head);

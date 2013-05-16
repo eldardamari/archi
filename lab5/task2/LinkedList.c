@@ -114,9 +114,19 @@ char *getName(varset *head,char * str){
     return NULL;
 }
 
-//TODO!!!!
 /* free all memory */
-void freeall(){
+void freeall(varset* head){
 
+    varset *temp_link;
+
+    int i;
+    for(i = 0; i <linkedlistsize ; i++){
+        temp_link = head;
+        head = head->next;
+        free(temp_link->name);
+        free(temp_link->value);
+        free(temp_link);
+    }
+    free(&head);
 }
 #endif
