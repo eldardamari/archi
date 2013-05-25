@@ -1,0 +1,22 @@
+     1                                  section	.rodata
+     2                                  R:
+     3 00000000 4E756D626572206F66-     	DB	"Number of calculations done:  %d", 10, 0	; Format string
+     4 00000009 2063616C63756C6174-
+     5 00000012 696F6E7320646F6E65-
+     6 0000001B 3A202025640A00     
+     7                                  section .bss
+     8                                  
+     9                                  section .text
+    10                                  	align 16
+    11                                  	global main
+    12                                  	extern printf
+    13                                  	extern my_calc
+    14                                  main:
+    15 00000000 E8(00000000)            	call my_calc
+    16 00000005 50                      	push eax
+    17 00000006 68[00000000]            	push R
+    18 0000000B E8(00000000)            	call printf
+    19 00000010 83C408                  	add esp,8
+    20 00000013 BB00000000              	mov ebx,0
+    21 00000018 B801000000              	mov eax,1
+    22 0000001D CD80                    	int 80h
