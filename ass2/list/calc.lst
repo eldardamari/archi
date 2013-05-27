@@ -1,689 +1,718 @@
-     1                                  %define	NODE_SIZE 6
+     1                                  %define	STACK_SIZE 6
      2                                  %define NUM_REPAIR 48
      3                                  %define CHAR_REPAIR 55
-     4                                  
-     5                                  section	.rodata
-     6 00000000 00000000010000000A-     BINARY	 DD		0000,0001,0010,0011,0100,0101,0110,0111,1000,1001,1010,1011,1100,1101,1110,1111
-     7 00000009 0000000B0000006400-
-     8 00000012 0000650000006E0000-
-     9 0000001B 006F000000E8030000-
-    10 00000024 E9030000F2030000F3-
-    11 0000002D 0300004C0400004D04-
-    12 00000036 000056040000570400-
-    13 0000003F 00                 
-    14 00000040 303030303030303130-     BINARY_STR DD		"0000","0001","0010","0011","0100","0101","0110","0111","1000","1001","1010","1011","1100","1101","1110","1111"
-    15 00000049 303130303031313031-
-    16 00000052 303030313031303131-
-    17 0000005B 303031313131303030-
-    18 00000064 313030313130313031-
-    19 0000006D 303131313130303131-
-    20 00000076 303131313130313131-
-    21 0000007F 31                 
-    22 00000080 4572726F723A205374-     ERROR_OVERFLOW		DB	"Error: Stack Overflow. ",10,0
-    23 00000089 61636B204F76657266-
-    24 00000092 6C6F772E200A00     
-    25 00000099 4572726F723A204E6F-     ERROR_ARGUMENTS		DB	"Error: Not Enough Arguments on Stack. ",10,0
-    26 000000A2 7420456E6F75676820-
-    27 000000AB 417267756D656E7473-
-    28 000000B4 206F6E20537461636B-
-    29 000000BD 2E200A00           
-    30 000000C1 63616C633A00            CALC 			DB	"calc:", 0	; Format string
-    31 000000C7 255800                  PRINT_C 		DB	"%X",0
-    32 000000CA 2530346400              PRINT_S 		DB	"%04d",0
-    33 000000CF 0A00                    NEWLINE 		DB	"",10,0
-    34                                  
-    35                                  section .data
-    36 00000000 00000000                	an:   DD 0	; counts the total number of calculations used
-    37                                  
-    38                                  section .bss
-    39 00000000 <res 00000050>          INPUT		RESB 	80
-    40 00000050 <res 00000018>          STACK		RESB 	24
-    41 00000068 <res 00000004>          INDEX		RESB 	4
-    42 0000006C <res 00000004>          INPUTMODE		RESB 	4
-    43 00000070 <res 00000050>          OPERAND1	RESB	80
-    44 000000C0 <res 00000050>          OPERAND2	RESB	80
-    45 00000110 <res 00000052>          ANSWER		RESB	82
-    46 00000162 <res 00000004>          OPI1		RESB	4
-    47 00000166 <res 00000004>          OPI2		RESB	4
-    48 0000016A <res 00000004>          ANI		RESB 	4
-    49                                  
-    50                                  section .text
-    51                                  	align 16
-    52                                  	global my_calc
-    53                                  	extern printf
-    54                                  	extern gets
-    55                                  	extern malloc
-    56                                  
-    57                                  
-    58                                  my_calc:
-    59 00000000 55                      	push	ebp
-    60 00000001 89E5                    	mov	ebp, esp	
-    61 00000003 60                      	pusha			
-    62                                  		
-    63 00000004 C605[68000000]01        	mov	byte [INDEX],1
-    64 0000000B C605[6C000000]00        	mov	byte [INPUTMODE],0
-    65                                  
-    66                                  
-    67                                  calc:
-    68 00000012 B800000000              	mov	eax,0
-    69 00000017 BB00000000              	mov	ebx,0
-    70                                  
-    71 0000001C 68[C1000000]            	push	CALC
-    72 00000021 E8(00000000)            	call	printf
-    73 00000026 83C404                  	add	esp,4
-    74                                  	
-    75 00000029 68[00000000]            	push	dword INPUT
-    76 0000002E E8(00000000)            	call	gets
-    77 00000033 83C404                  	add	esp,4
-    78                                  	
-    79 00000036 8A1D[00000000]          	mov	bl,[INPUT]	;checking the first char
-    80 0000003C FF05[00000000]          	inc 	dword [an]
-    81                                  	
-    82 00000042 80FB71                  	cmp 	bl,'q'	;quit
-    83 00000045 742B                    	je	quit
-    84                                  	
-    85 00000047 80FB70                  	cmp	bl,'p'	;pop and print
-    86 0000004A 0F8413020000            	je	print
-    87                                  
-    88 00000050 80FB6F                  	cmp	bl,'o'	;octal
-    89 00000053 0F8402050000            	je	octal
-    90                                  
-    91 00000059 80FB68                  	cmp	bl,'h'	;hexadecimal
-    92 0000005C 0F8405050000            	je	hexadecimal
-    93                                  
-    94 00000062 80FB64                  	cmp	bl,'d'	;duplicate
-    95 00000065 0F84C0010000            	je	duplicate
+     4                                  %define	HEX_BASE 16
+     5                                  %define OCTAL_BASE 8
+     6                                  
+     7                                  section	.rodata
+     8 00000000 4572726F723A205374-     ERROR_OVERFLOW		DB	"Error: Stack Overflow. ",10,0
+     9 00000009 61636B204F76657266-
+    10 00000012 6C6F772E200A00     
+    11 00000019 4572726F723A204E6F-     ERROR_ARGUMENTS		DB	"Error: Not Enough Arguments on Stack. ",10,0
+    12 00000022 7420456E6F75676820-
+    13 0000002B 417267756D656E7473-
+    14 00000034 206F6E20537461636B-
+    15 0000003D 2E200A00           
+    16 00000041 63616C633A00            CALC 			DB	"calc:", 0	; Format string
+    17 00000047 255800                  PRINT_C 		DB	"%X",0
+    18 0000004A 256F00                  PRINT_O 		DB	"%o",0
+    19 0000004D 256400                  PRINT_D			DB	"%d",0
+    20 00000050 0A00                    NEWLINE 		DB	"",10,0
+    21                                  
+    22                                  section .data
+    23 00000000 00000000                	an:   DD 0	; counts the total number of calculations used
+    24                                  
+    25                                  section .bss
+    26 00000000 <res 00000050>          INPUT		RESB 	80	;input from user
+    27 00000050 <res 00000018>          STACK		RESB 	24	;the stack holding all elements
+    28 00000068 <res 00000004>          INDEX		RESB 	4	;num of elements
+    29 0000006C <res 00000004>          INPUTMODE	RESB 	4	;0 = hex, 1=octal
+    30 00000070 <res 00000050>          OPERAND1	RESB	80	;holding all numbers in one array
+    31 000000C0 <res 00000050>          OPERAND2	RESB	80	;holding all numbers in one array
+    32 00000110 <res 00000052>          ANSWER		RESB	82	;answer after calc
+    33 00000162 <res 00000004>          OPI1		RESB	4	
+    34 00000166 <res 00000004>          OPI2		RESB	4
+    35 0000016A <res 00000004>          ANI		RESB 	4
+    36 0000016E <res 00000020>          EXPONENT	RESB	32	;saving the number that needs to be calc
+    37 0000018E <res 00000028>          EXP_ANSWER	RESB    40	;answer of exponent to be build as linked list
+    38                                  
+    39                                  
+    40                                  section .text
+    41                                  	align 16
+    42                                  	global my_calc
+    43                                  	extern printf
+    44                                  	extern gets
+    45                                  	extern malloc
+    46                                  	extern free
+    47                                  
+    48                                  my_calc:
+    49 00000000 55                      	push	ebp
+    50 00000001 89E5                    	mov	ebp, esp	
+    51 00000003 60                      	pusha			
+    52                                  	
+    53 00000004 C605[68000000]01        	mov	byte [INDEX],1
+    54 0000000B C605[6C000000]00        	mov	byte [INPUTMODE],0
+    55                                  
+    56                                  calc:
+    57 00000012 B800000000              	mov	eax,0
+    58 00000017 BB00000000              	mov	ebx,0
+    59                                  
+    60 0000001C 68[41000000]            	push	CALC
+    61 00000021 E8(00000000)            	call	printf
+    62 00000026 83C404                  	add	esp,4
+    63                                  	
+    64 00000029 68[00000000]            	push	dword INPUT
+    65 0000002E E8(00000000)            	call	gets
+    66 00000033 83C404                  	add	esp,4
+    67                                  	
+    68 00000036 8A1D[00000000]          	mov	bl,[INPUT]	;checking the first char
+    69 0000003C FF05[00000000]          	inc 	dword [an]
+    70                                  	
+    71 00000042 80FB71                  	cmp 	bl,'q'		;quit
+    72 00000045 7441                    	je	quit
+    73                                  	
+    74 00000047 80FB70                  	cmp	bl,'p'		;pop and print
+    75 0000004A 0F8444020000            	je	print
+    76                                  
+    77 00000050 80FB6F                  	cmp	bl,'o'		;octal
+    78 00000053 0F846D030000            	je	octal
+    79                                  
+    80 00000059 80FB68                  	cmp	bl,'h'		;hexadecimal
+    81 0000005C 0F8470030000            	je	hexadecimal
+    82                                  
+    83 00000062 80FB64                  	cmp	bl,'d'		;duplicate
+    84 00000065 0F84F1010000            	je	duplicate
+    85                                  
+    86 0000006B 80FB2B                  	cmp	bl,'+'		;addition
+    87 0000006E 0F848B000000            	je	addition
+    88                                  	
+    89 00000074 80FB78                  	cmp	bl,'x'		;xor
+    90 00000077 0F846D030000            	je	xor
+    91                                  	
+    92 0000007D 80FB5E                  	cmp	bl,'^'		;exponent
+    93 00000080 0F849E040000            	je	exponent
+    94                                  
+    95 00000086 EB33                    	jmp	push_number	;number from user
     96                                  
-    97 0000006B 80FB2B                  	cmp	bl,'+'	;addition
-    98 0000006E 7471                    	je	addition
-    99                                  
-   100 00000070 EB2B                    	jmp	push_number
-   101                                  
-   102                                  
-   103                                  quit:	
-   104 00000072 61                      	popa			
-   105 00000073 89EC                    	mov	esp, ebp	
-   106 00000075 5D                      	pop	ebp
-   107 00000076 A1[00000000]            	mov eax,[an]
-   108 0000007B C3                      	ret
-   109                                  
-   110                                  
-   111                                  error_overflow:
-   112 0000007C 68[80000000]            		push	ERROR_OVERFLOW
-   113 00000081 E8(00000000)            		call	printf
-   114 00000086 83C404                  		add	esp,4
-   115 00000089 EB87                    		jmp	calc	
-   116                                  
-   117                                  
-   118                                  error_argu:
-   119 0000008B 68[99000000]            		push	ERROR_ARGUMENTS
-   120 00000090 E8(00000000)            		call	printf
-   121 00000095 83C404                  		add	esp,4
-   122 00000098 E975FFFFFF              		jmp	calc	
-   123                                  
-   124                                  push_number:
-   125 0000009D FF0D[00000000]          	dec 	dword [an]
-   126 000000A3 803D[68000000]06        	cmp	byte [INDEX],NODE_SIZE
-   127 000000AA 7DD0                    	jge	error_overflow
-   128 000000AC BF00000000              	mov	edi,0
-   129 000000B1 BE00000000              	mov	esi,0
-   130 000000B6 8B35[68000000]          	mov	esi,[INDEX]
-   131 000000BC 6BF604                  	imul	esi,4
-   132 000000BF BF[50000000]            	mov	edi,STACK
-   133 000000C4 01F7                    	add	edi,esi
-   134 000000C6 6A00                    	push	dword 0  
-   135 000000C8 68[00000000]            	push	INPUT
-   136 000000CD 57                      	push	edi
-   137 000000CE E817020000              	call	make_list
-   138 000000D3 83C40C                  	add	esp,12
-   139 000000D6 FE05[68000000]          	inc	byte [INDEX]	
-   140 000000DC E931FFFFFF              	jmp	calc
-   141                                  
-   142                                  
-   143                                  addition:
-   144 000000E1 C705[62010000]0000-     	  mov	dword [OPI1],0
-   145 000000E9 0000               
-   146 000000EB C705[66010000]0000-     	  mov	dword [OPI2],0
-   147 000000F3 0000               
-   148 000000F5 803D[68000000]02                  cmp	byte [INDEX],2
-   149 000000FC 7E8D                    	  jle	error_argu
-   150 000000FE 8B35[68000000]          	  mov	esi,[INDEX]
-   151 00000104 4E                      	  dec	esi
-   152 00000105 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
-   153 0000010C B800000000              	  mov	eax,0   
-   154                                  
-   155                                  
-   156                                  op1_loop:
-   157 00000111 BA00000000              	  mov   edx,0
-   158 00000116 8A17                    	  mov	dl,[edi] 
-   159 00000118 8890[70000000]          	  mov	[OPERAND1+eax],dl
-   160 0000011E 47                      	  inc	edi
-   161 0000011F 40                      	  inc	eax
-   162 00000120 8B3F                    	  mov	edi,[edi]
-   163 00000122 80FA47                  	  cmp	dl,'G'
-   164 00000125 75EA                    	  jne	op1_loop  
-   165 00000127 48                      	  dec	eax
-   166 00000128 A3[62010000]            	  mov	[OPI1],eax
-   167 0000012D 4E                      	  dec	esi
-   168 0000012E 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
-   169 00000135 B800000000              	  mov	eax,0
-   170 0000013A FE0D[68000000]          	  dec	byte [INDEX]
-   171                                  
-   172                                  
-   173                                  op2_loop:
-   174 00000140 BA00000000              	  mov   edx,0
-   175 00000145 8A17                    	  mov	dl,[edi]  
-   176 00000147 8890[C0000000]          	  mov	[OPERAND2+eax],dl
-   177 0000014D 47                      	  inc	edi
-   178 0000014E 40                      	  inc	eax
-   179 0000014F 8B3F                    	  mov	edi,[edi]
-   180 00000151 80FA47                  	  cmp	dl,'G'
-   181 00000154 75EA                    	  jne	op2_loop   
-   182 00000156 48                      	  dec	eax
-   183 00000157 A3[66010000]            	  mov	[OPI2],eax
-   184 0000015C FE0D[68000000]          	  dec	byte [INDEX]
-   185 00000162 A3[6A010000]            	  mov	[ANI],eax    
-   186 00000167 3B05[62010000]          	  cmp	eax,[OPI1]
-   187 0000016D 7D0A                    	  jge	aif
-   188 0000016F A1[62010000]            	  mov	eax,[OPI1]
-   189 00000174 A3[6A010000]            	  mov	[ANI],eax
-   190                                  
-   191                                  
-   192                                  aif:
-   193 00000179 FF05[6A010000]          	  inc	dword [ANI]   
-   194 0000017F 8B35[6A010000]          	  mov	esi,[ANI]
-   195 00000185 C686[10010000]47        	  mov	byte [ANSWER+esi],'G'
-   196 0000018C B900000000              	  mov	ecx,0	
-   197                                  	  
-   198                                  
-   199                                  add_loop:
-   200 00000191 B800000000              	    mov	 eax,0 
-   201 00000196 BB00000000              	    mov	 ebx,0 
-   202 0000019B FF0D[6A010000]          	    dec  dword [ANI]
-   203 000001A1 FF0D[62010000]          	    dec	 dword [OPI1]
-   204 000001A7 FF0D[66010000]          	    dec	 dword [OPI2]
-   205 000001AD 833D[6A010000]00        	    cmp  dword [ANI],0
-   206 000001B4 7C40                    	    jl	 add_out
-   207 000001B6 8B35[62010000]          	    mov	 esi,[OPI1]
-   208 000001BC 83FE00                  	    cmp	 esi,0
-   209 000001BF 7C06                    	    jl	 ifop1
-   210 000001C1 8A86[70000000]          	    mov  al,[OPERAND1+esi]
+    97                                  
+    98                                  quit:	
+    99 00000088 E9A9050000              	jmp	free_stack
+   100                                  	
+   101                                  continue:
+   102 0000008D 61                      	popa				
+   103 0000008E 89EC                    	mov	esp, ebp
+   104 00000090 5D                      	pop	ebp
+   105 00000091 A1[00000000]            	mov eax,[an]
+   106 00000096 C3                      	ret
+   107                                  
+   108                                  error_overflow:		;message error overflow
+   109 00000097 68[00000000]            		push	ERROR_OVERFLOW
+   110 0000009C E8(00000000)            		call	printf
+   111 000000A1 83C404                  		add	esp,4
+   112 000000A4 E969FFFFFF              		jmp	calc	
+   113                                  
+   114                                  error_argu:		;message error arguments
+   115 000000A9 68[19000000]            		push	ERROR_ARGUMENTS
+   116 000000AE E8(00000000)            		call	printf
+   117 000000B3 83C404                  		add	esp,4
+   118 000000B6 E957FFFFFF              		jmp	calc	
+   119                                  
+   120                                  push_number:
+   121 000000BB FF0D[00000000]          	dec 	dword [an]		;not yet to be counted
+   122 000000C1 803D[68000000]06        	cmp	byte [INDEX],STACK_SIZE ;max num of numbers should be STACK_SIZE-1
+   123 000000C8 7DCD                    	jge	error_overflow
+   124 000000CA BF00000000              	mov	edi,0
+   125 000000CF BE00000000              	mov	esi,0
+   126 000000D4 8B35[68000000]          	mov	esi,[INDEX]
+   127 000000DA 6BF604                  	imul	esi,4
+   128 000000DD BF[50000000]            	mov	edi,STACK
+   129 000000E2 01F7                    	add	edi,esi			;getting the index to place new number link in stack
+   130 000000E4 6A00                    	push	dword 0
+   131 000000E6 68[00000000]            	push	INPUT
+   132 000000EB 57                      	push	edi
+   133 000000EC E822020000              	call	make_list		;make list for stack
+   134 000000F1 83C40C                  	add	esp,12
+   135 000000F4 FE05[68000000]          	inc	byte [INDEX]	
+   136 000000FA E913FFFFFF              	jmp	calc
+   137                                  
+   138                                  
+   139                                  addition:
+   140 000000FF C705[62010000]0000-     	  mov	dword [OPI1],0
+   141 00000107 0000               
+   142 00000109 C705[66010000]0000-     	  mov	dword [OPI2],0
+   143 00000111 0000               
+   144 00000113 803D[68000000]02                  cmp	byte [INDEX],2
+   145 0000011A 7E8D                    	  jle	error_argu
+   146 0000011C 8B35[68000000]          	  mov	esi,[INDEX]
+   147 00000122 4E                      	  dec	esi
+   148 00000123 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]	;the last argument in stack
+   149 0000012A B800000000              	  mov	eax,0
+   150                                  
+   151                                  op1_loop:			;gathering all numbers op operand 1 in array
+   152 0000012F BA00000000              	  mov   edx,0			
+   153 00000134 8A17                    	  mov	dl,[edi]		;number to be calculate
+   154 00000136 8890[70000000]          	  mov	[OPERAND1+eax],dl	
+   155 0000013C 47                      	  inc	edi
+   156 0000013D 40                      	  inc	eax
+   157 0000013E 8B3F                    	  mov	edi,[edi]
+   158 00000140 80FA47                  	  cmp	dl,'G'			;end of linked list - end with 'G'
+   159 00000143 75EA                    	  jne	op1_loop
+   160                                  	  
+   161 00000145 48                      	  dec	eax			;setting eax to size of elements ex. eax=8 -> 2 numbers  
+   162 00000146 A3[62010000]            	  mov	[OPI1],eax
+   163 0000014B 4E                      	  dec	esi
+   164 0000014C 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   165 00000153 B800000000              	  mov	eax,0
+   166 00000158 FE0D[68000000]          	  dec	byte [INDEX]
+   167                                  
+   168                                  
+   169                                  op2_loop:			;gathering all numbers op operand 2 in array
+   170 0000015E BA00000000              	  mov   edx,0
+   171 00000163 8A17                    	  mov	dl,[edi]  
+   172 00000165 8890[C0000000]          	  mov	[OPERAND2+eax],dl
+   173 0000016B 47                      	  inc	edi
+   174 0000016C 40                      	  inc	eax
+   175 0000016D 8B3F                    	  mov	edi,[edi]
+   176 0000016F 80FA47                  	  cmp	dl,'G'
+   177 00000172 75EA                    	  jne	op2_loop   
+   178                                  	  
+   179 00000174 48                      	  dec	eax
+   180 00000175 A3[66010000]            	  mov	[OPI2],eax
+   181 0000017A FE0D[68000000]          	  dec	byte [INDEX]
+   182                                  	  
+   183 00000180 A3[6A010000]            	  mov	[ANI],eax	;setting the answer size by the bigger operands (align)
+   184 00000185 3B05[62010000]          	  cmp	eax,[OPI1]
+   185 0000018B 7D0A                    	  jge	build_ans
+   186 0000018D A1[62010000]            	  mov	eax,[OPI1]
+   187 00000192 A3[6A010000]            	  mov	[ANI],eax
+   188                                  
+   189                                  
+   190                                  build_ans:			;building answer
+   191 00000197 FF05[6A010000]          	  inc	dword [ANI]
+   192 0000019D 8B35[6A010000]          	  mov	esi,[ANI]
+   193 000001A3 C686[10010000]47        	  mov	byte [ANSWER+esi],'G'
+   194 000001AA B900000000              	  mov	ecx,0
+   195                                  	  
+   196                                  
+   197                                  add_loop:			;starting adding loop
+   198 000001AF B800000000              	    mov	 eax,0 
+   199 000001B4 BB00000000              	    mov	 ebx,0 
+   200 000001B9 FF0D[6A010000]          	    dec  dword [ANI]
+   201 000001BF FF0D[62010000]          	    dec	 dword [OPI1]
+   202 000001C5 FF0D[66010000]          	    dec	 dword [OPI2]
+   203 000001CB 833D[6A010000]00        	    cmp  dword [ANI],0
+   204 000001D2 7C53                    	    jl	 add_out
+   205                                  	    
+   206 000001D4 8B35[62010000]          	    mov	 esi,[OPI1]
+   207 000001DA 83FE00                  	    cmp	 esi,0
+   208 000001DD 7C06                    	    jl	 opi1_empty
+   209                                  
+   210 000001DF 8A86[70000000]          	    mov  al,[OPERAND1+esi]
    211                                  
    212                                  
-   213                                  ifop1:
-   214 000001C7 8B35[66010000]          	    mov	 esi,[OPI2]
-   215 000001CD 83FE00                  	    cmp	 esi,0
-   216 000001D0 7C06                    	    jl	 ifop2
-   217 000001D2 8A9E[C0000000]          	    mov  bl,[OPERAND2+esi]
-   218                                  
+   213                                  opi1_empty:
+   214 000001E5 8B35[66010000]          	    mov	 esi,[OPI2]
+   215 000001EB 83FE00                  	    cmp	 esi,0
+   216 000001EE 7C06                    	    jl	 opi2_empty
+   217                                  
+   218 000001F0 8A9E[C0000000]          	    mov  bl,[OPERAND2+esi]
    219                                  
-   220                                  ifop2:
-   221 000001D8 00D8                    	    add  al,bl
-   222 000001DA 00C8                    	    add  al,cl
-   223                                  
-   224 000001DC 3C10                    	    cmp	 al,16     
-   225 000001DE 7C06                    	    jl	 nocarry
-   226 000001E0 B101                    	    mov	 cl,1
-   227 000001E2 2C10                    	    sub	 al,16     
-   228 000001E4 EB02                    	    jmp	 after_carry
-   229                                  
-   230                                  
-   231                                  nocarry:    
-   232 000001E6 B100                    	    mov	 cl,0
+   220                                  opi2_empty:			
+   221 000001F6 00D8                    	    add  al,bl
+   222 000001F8 00C8                    	    add  al,cl			;cl represents the carry from the previous iteration
+   223                                  	    
+   224 000001FA 803D[6C000000]01        	    cmp	 byte [INPUTMODE],1
+   225 00000201 740A                    	    je	 check_octal_carry
+   226                                  	    
+   227 00000203 3C10                    	    cmp	 al,16     
+   228 00000205 7C10                    	    jl	 nocarry
+   229                                  	    
+   230 00000207 B101                    	    mov	 cl,1
+   231 00000209 2C10                    	    sub	 al,16     
+   232 0000020B EB0C                    	    jmp	 after_carry
    233                                  
-   234                                  
-   235                                  after_carry:
-   236 000001E8 8B35[6A010000]          	    mov	esi,[ANI]
-   237 000001EE 8886[10010000]          	    mov	[ANSWER+esi],al
-   238 000001F4 EB9B                    	    jmp add_loop
-   239                                  	
-   240                                      
-   241                                  add_out:
-   242 000001F6 BF00000000              	mov	edi,0
-   243 000001FB BE00000000              	mov	esi,0
-   244 00000200 8B35[68000000]          	mov	esi,[INDEX]
-   245 00000206 6BF604                  	imul	esi,4
-   246 00000209 BF[50000000]                    mov	edi,STACK
-   247 0000020E 01F7                            add	edi,esi
-   248 00000210 6A01                    	push	dword 1    
-   249 00000212 68[10010000]            	push	ANSWER
-   250 00000217 57                      	push	edi
-   251 00000218 E8CD000000              	call	make_list
-   252 0000021D 83C40C                  	add 	esp,12
-   253 00000220 FE05[68000000]          	inc	byte [INDEX]
-   254 00000226 E9E7FDFFFF              	jmp	calc
-   255                                  
-   256                                  
-   257                                  duplicate:
-   258 0000022B BE00000000              	  mov	esi,0
-   259 00000230 8B35[68000000]          	  mov	esi,[INDEX]
-   260                                  
-   261 00000236 83FE06                  	  cmp	esi,NODE_SIZE
-   262 00000239 0F8D3DFEFFFF            	  jge	error_overflow
-   263                                  
-   264 0000023F 83FE01                  	  cmp	esi,1
-   265 00000242 0F8E43FEFFFF            	  jle	error_argu
-   266                                  
-   267 00000248 4E                      	  dec	esi
-   268 00000249 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   234                                  check_octal_carry:			;setting carry for octal
+   235 0000020D 3C08                    	    cmp	 al,8     
+   236 0000020F 7C06                    	    jl	 nocarry
+   237 00000211 B101                    	    mov	 cl,1
+   238 00000213 2C08                    	    sub	 al,8     
+   239 00000215 EB02                    	    jmp	 after_carry
+   240                                  
+   241                                  nocarry:    
+   242 00000217 B100                    	    mov	 cl,0
+   243                                  
+   244                                  after_carry:
+   245 00000219 8B35[6A010000]          	    mov	esi,[ANI]
+   246 0000021F 8886[10010000]          	    mov	[ANSWER+esi],al
+   247 00000225 EB88                    	    jmp add_loop
+   248                                      
+   249                                  add_out:			;taking answer and adding to stack
+   250 00000227 BF00000000              	mov	edi,0
+   251 0000022C BE00000000              	mov	esi,0
+   252 00000231 8B35[68000000]          	mov	esi,[INDEX]
+   253 00000237 6BF604                  	imul	esi,4
+   254 0000023A BF[50000000]                    mov	edi,STACK
+   255 0000023F 01F7                            add	edi,esi
+   256 00000241 6A01                    	push	dword 1    
+   257 00000243 68[10010000]            	push	ANSWER
+   258 00000248 57                      	push	edi
+   259 00000249 E8C5000000              	call	make_list
+   260 0000024E 83C40C                  	add 	esp,12
+   261 00000251 FE05[68000000]          	inc	byte [INDEX]
+   262                                  
+   263                                  	
+   264 00000257 E9B6FDFFFF              	jmp	calc
+   265                                  
+   266                                  duplicate:			;duplicating last element
+   267 0000025C BE00000000              	  mov	esi,0
+   268 00000261 8B35[68000000]          	  mov	esi,[INDEX]
    269                                  
-   270 00000250 46                      	  inc	esi
-   271 00000251 893CB5[50000000]        	  mov	[STACK+4*esi],edi
-   272 00000258 FE05[68000000]          	  inc	byte [INDEX]
-   273                                  
-   274 0000025E E9AFFDFFFF              	  jmp	calc
+   270 00000267 83FE06                  	  cmp	esi,STACK_SIZE
+   271 0000026A 0F8D27FEFFFF            	  jge	error_overflow
+   272                                  
+   273 00000270 83FE01                  	  cmp	esi,1
+   274 00000273 0F8E30FEFFFF            	  jle	error_argu
    275                                  
-   276                                  
-   277                                  print:
-   278 00000263 803D[68000000]01        	cmp	byte [INDEX],1
-   279 0000026A 0F8E1BFEFFFF            	jle	error_argu
-   280 00000270 B900000000              	mov	ecx, 0
-   281                                  
-   282                                  	
-   283                                  skip:
-   284 00000275 BE00000000              	mov	esi,0
-   285 0000027A BF00000000              	mov	edi,0
-   286                                  	
-   287 0000027F 8B35[68000000]          	mov	esi,[INDEX]
-   288 00000285 4E                      	dec	esi
-   289 00000286 8B3CB5[50000000]        	mov	edi,[STACK+4*esi]
-   290                                  
-   291                                  
-   292                                  print_loop:
-   293 0000028D BA00000000              	mov	edx,0
-   294 00000292 8A17                    	mov	dl,[edi]
-   295                                  	
-   296 00000294 80FA47                  	cmp	byte dl,'G'
-   297 00000297 7439                    	je	print_out
-   298                                  
-   299 00000299 83F900                  	cmp 	ecx, 0
-   300 0000029C 7505                    	jne 	non_zero_print
-   301                                    
-   302 0000029E 83FA00                  	cmp	edx, 0
-   303 000002A1 742A                    	je	next_print
+   276 00000279 4E                      	  dec	esi
+   277 0000027A 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   278                                  
+   279 00000281 46                      	  inc	esi
+   280 00000282 893CB5[50000000]        	  mov	[STACK+4*esi],edi
+   281 00000289 FE05[68000000]          	  inc	byte [INDEX]
+   282                                  
+   283 0000028F E97EFDFFFF              	  jmp	calc
+   284                                  
+   285                                  
+   286                                  print:				;printing function, by octal/hex and removing leading zeros
+   287 00000294 803D[68000000]01        	cmp	byte [INDEX],1
+   288 0000029B 0F8E08FEFFFF            	jle	error_argu
+   289 000002A1 B800000000              	mov	eax, 0
+   290                                  	
+   291 000002A6 BE00000000              	mov	esi,0
+   292 000002AB BF00000000              	mov	edi,0
+   293                                  	
+   294 000002B0 8B35[68000000]          	mov	esi,[INDEX]
+   295 000002B6 4E                      	dec	esi
+   296 000002B7 8B3CB5[50000000]        	mov	edi,[STACK+4*esi]
+   297                                  
+   298                                  print_loop:
+   299 000002BE BA00000000              	mov	edx,0
+   300 000002C3 8A17                    	mov	dl,[edi]
+   301                                  	
+   302 000002C5 80FA47                  	cmp	byte dl,'G'
+   303 000002C8 7431                    	je	print_out
    304                                  
-   305                                  
-   306                                  non_zero_print:
-   307 000002A3 B901000000              	mov	ecx, 1
-   308 000002A8 803D[6C000000]00        	cmp	byte [INPUTMODE],0
-   309 000002AF 740E                    	je	hex
-   310                                  
-   311 000002B1 FF3495[00000000]        	push	dword [BINARY+4*edx]
-   312 000002B8 68[CA000000]            	push	PRINT_S
-   313 000002BD EB06                    	jmp	Apush
-   314                                  
+   305 000002CA 83F800                  	cmp 	eax, 0
+   306 000002CD 7508                    	jne 	non_zero_print
+   307                                   
+   308 000002CF 83C001                  	add     eax, 1
+   309 000002D2 83FA00                  	cmp	edx, 0		;first node is 0(zero) so don't need to print
+   310 000002D5 741F                    	je	next_print
+   311                                  
+   312                                  non_zero_print:
+   313 000002D7 803D[6C000000]00        	cmp	byte [INPUTMODE],0
+   314 000002DE 7408                    	je	hex
    315                                  
-   316                                  hex:
-   317 000002BF 52                      	push	edx
-   318 000002C0 68[C7000000]            	push	PRINT_C
-   319                                    
-   320                                  
-   321                                  Apush:
-   322 000002C5 E8(00000000)            	call	printf
-   323 000002CA 83C408                  	add 	esp,8
-   324                                  
-   325                                    
-   326                                  next_print:
-   327 000002CD 47                      	inc	edi
-   328 000002CE 8B3F                    	mov	edi,[edi]
-   329 000002D0 EBBB                    	jmp	print_loop
-   330                                    
-   331                                  
-   332                                  print_out:
-   333 000002D2 FE0D[68000000]          	dec	byte [INDEX]
-   334 000002D8 68[CF000000]            	push	NEWLINE
-   335 000002DD E8(00000000)            	call	printf
-   336 000002E2 83C404                  	add	esp,4
-   337 000002E5 E928FDFFFF              	jmp 	calc	
-   338                                  	
-   339                                  
-   340                                  make_list:
-   341 000002EA 55                      	  push	ebp
-   342 000002EB 89E5                    	  mov	ebp, esp	
-   343 000002ED 60                      	  pusha
-   344                                  
-   345 000002EE BF00000000              	  mov	edi,0
-   346 000002F3 B800000000              	  mov	eax,0
-   347 000002F8 BB00000000              	  mov	ebx,0
-   348 000002FD BA00000000              	  mov	edx,0
-   349                                  	  
-   350 00000302 8B7D08                  	  mov	edi,[ebp+8] 
-   351 00000305 8B5D0C                  	  mov	ebx,[ebp+12]
-   352 00000308 8B7510                  	  mov	esi,[ebp+16]
-   353                                  	  
-   354 0000030B 83FE01                  	  cmp	esi, 1
-   355 0000030E 7409                    	  je	loop1
-   356                                  
-   357 00000310 803D[6C000000]01        	  cmp	byte [INPUTMODE],1
-   358 00000317 7447                    	  je	loop_bin
-   359                                  
+   316 000002E0 52                      	push	edx
+   317 000002E1 68[4A000000]            	push	PRINT_O
+   318 000002E6 EB06                    	jmp	Apush
+   319                                  
+   320                                  hex:
+   321 000002E8 52                      	push	edx
+   322 000002E9 68[47000000]            	push	PRINT_C
+   323                                    
+   324                                  Apush:
+   325 000002EE E8(00000000)            	call	printf
+   326 000002F3 83C408                  	add 	esp,8
+   327                                    
+   328                                  next_print:
+   329 000002F6 47                      	inc	edi
+   330 000002F7 8B3F                    	mov	edi,[edi]
+   331 000002F9 EBC3                    	jmp	print_loop
+   332                                    
+   333                                  
+   334                                  print_out:			;printing newline
+   335 000002FB FE0D[68000000]          	dec	byte [INDEX]
+   336 00000301 68[50000000]            	push	NEWLINE
+   337 00000306 E8(00000000)            	call	printf
+   338 0000030B 83C404                  	add	esp,4
+   339 0000030E E9FFFCFFFF              	jmp 	calc	
+   340                                  
+   341                                  make_list:			;making list - for storing all digits/letters in operands. ending list node in 'G'
+   342 00000313 55                      	  push	ebp
+   343 00000314 89E5                    	  mov	ebp, esp	
+   344 00000316 60                      	  pusha
+   345                                  
+   346 00000317 BF00000000              	  mov	edi,0
+   347 0000031C B800000000              	  mov	eax,0
+   348 00000321 BB00000000              	  mov	ebx,0
+   349 00000326 BA00000000              	  mov	edx,0
+   350                                  	  
+   351 0000032B 8B7D08                  	  mov	edi,[ebp+8]
+   352 0000032E 8B5D0C                  	  mov	ebx,[ebp+12]
+   353 00000331 8B7510                  	  mov	esi,[ebp+16]
+   354                                  	  
+   355 00000334 83FE01                  	  cmp	esi, 1
+   356 00000337 7409                    	  je	loop1
+   357                                  
+   358 00000339 803D[6C000000]01        	  cmp	byte [INPUTMODE],1
+   359 00000340 745D                    	  je	loop_octal
    360                                  
-   361                                  loop1:
-   362 00000319 53                      	  push 	ebx             
-   363 0000031A 6A05                    	  push 	dword 5
-   364 0000031C E8(00000000)            	  call  malloc
-   365 00000321 83C404                  	  add	esp,4
-   366 00000324 5B                      	  pop 	ebx
-   367                                  
-   368 00000325 BA00000000              	  mov	edx,0
-   369 0000032A 8A13                    	  mov	dl,[ebx]
-   370                                  
-   371 0000032C 80FA47                  	  cmp	byte dl,'G'	
-   372 0000032F 7420                    	  je	out
-   373                                  	  
-   374 00000331 83FE01                  	  cmp	esi,1		
-   375 00000334 7411                    	  je	after_repair
-   376                                  
-   377 00000336 80FA00                  	  cmp	byte dl,0	
-   378 00000339 7416                    	  je	out
-   379                                  
-   380 0000033B 80FA39                  	  cmp	dl,'9'
-   381 0000033E 0F8E2F020000            	  jle	num_repair
-   382 00000344 80EA37                  	  sub	dl,CHAR_REPAIR
-   383                                  
-   384                                  after_repair:
-   385 00000347 8810                    	  mov	[eax],dl
-   386 00000349 8907                    	  mov	[edi],eax
-   387                                  
-   388 0000034B 40                      	  inc	eax
-   389 0000034C 43                      	  inc	ebx
-   390 0000034D 89C7                    	  mov	edi,eax
-   391                                  
-   392 0000034F EBC8                    	  jmp	loop1
+   361                                  
+   362                                  loop1:			;hex loop
+   363 00000342 BA00000000              	  mov	edx,0
+   364 00000347 8A13                    	  mov	dl,[ebx]
+   365                                  
+   366 00000349 80FA30                  	  cmp	byte dl,'0'	
+   367 0000034C 7402                    	  je    char_zero
+   368 0000034E EB03                    	  jmp loop
+   369                                  	  
+   370                                  char_zero:
+   371                                  
+   372 00000350 43                      	  inc ebx
+   373 00000351 EBEF                    	  jmp loop1
+   374                                  
+   375                                  loop:
+   376 00000353 53                      	  push 	ebx
+   377 00000354 6A05                    	  push 	dword 5
+   378 00000356 E8(00000000)            	  call  malloc
+   379 0000035B 83C404                  	  add	esp,4
+   380 0000035E 5B                      	  pop 	ebx
+   381                                  
+   382 0000035F BA00000000              	  mov	edx,0
+   383 00000364 8A13                    	  mov	dl,[ebx]
+   384                                  
+   385 00000366 80FA47                  	  cmp	byte dl,'G'	
+   386 00000369 7425                    	  je	out
+   387                                  	  
+   388 0000036B 83FE01                  	  cmp	esi,1
+   389 0000036E 740D                    	  je	after_repair
+   390                                  
+   391 00000370 80FA00                  	  cmp	byte dl,0	
+   392 00000373 741B                    	  je	out
    393                                  
-   394                                  out:    
-   395 00000351 B247                    	  mov	dl,'G'
-   396 00000353 8810                    	  mov	[eax],dl
-   397 00000355 8907                    	  mov	[edi],eax
-   398                                  	  
-   399 00000357 40                      	  inc	eax
-   400 00000358 43                      	  inc	ebx
-   401 00000359 89C7                    	  mov	edi,eax
-   402                                  
-   403 0000035B 61                      	  popa
-   404 0000035C 89EC                    	  mov	esp, ebp	
-   405 0000035E 5D                      	  pop	ebp
-   406 0000035F C3                      	  ret
-   407                                  
-   408                                  
-   409                                  loop_bin:  
-   410 00000360 53                      	  push 	ebx              
-   411 00000361 6A05                    	  push 	dword 5
-   412 00000363 E8(00000000)            	  call  malloc
-   413 00000368 83C404                  	  add	esp,4
-   414 0000036B 5B                      	  pop 	ebx
-   415                                  
-   416 0000036C BA00000000              	  mov	edx,0
-   417 00000371 8B13                    	  mov	edx, [ebx]
-   418                                  
+   394 00000375 80FA39                  	  cmp	dl,'9'
+   395 00000378 7E64                    	  jle	num_repair
+   396 0000037A 80EA37                  	  sub	dl,CHAR_REPAIR
+   397                                  
+   398                                  after_repair:
+   399 0000037D 8810                    	  mov	[eax],dl	;assigning data to heap
+   400 0000037F 8907                    	  mov	[edi],eax	;set pointer of node in stack
+   401                                  
+   402 00000381 40                      	  inc	eax
+   403 00000382 43                      	  inc	ebx
+   404 00000383 89C7                    	  mov	edi,eax
+   405                                  
+   406 00000385 803D[6C000000]01        	  cmp	byte [INPUTMODE],1
+   407 0000038C 7411                    	  je	loop_octal
+   408                                  	  
+   409 0000038E EBB2                    	  jmp	loop1
+   410                                  
+   411                                  out:    
+   412 00000390 B247                    	  mov	dl,'G'
+   413 00000392 8810                    	  mov	[eax],dl
+   414 00000394 8907                    	  mov	[edi],eax
+   415                                  	  
+   416 00000396 40                      	  inc	eax
+   417 00000397 43                      	  inc	ebx
+   418 00000398 89C7                    	  mov	edi,eax
    419                                  
-   420 00000373 83FA00                  	  cmp	edx, 0	
-   421 00000376 0F84D0010000            	  je	out_bin
-   422                                  
-   423 0000037C 3B15[40000000]          	  cmp 	dword edx, [BINARY_STR]
-   424 00000382 0F84B4000000            	  je	push_0
-   425                                  
-   426 00000388 3B15[44000000]          	  cmp 	dword edx, [BINARY_STR+4]
-   427 0000038E 0F84B9000000            	  je	push_1
-   428                                  
-   429 00000394 3B15[48000000]          	  cmp 	dword edx, [BINARY_STR+8]
-   430 0000039A 0F84BE000000            	  je	push_2
+   420 0000039A 61                      	  popa
+   421 0000039B 89EC                    	  mov	esp, ebp	
+   422 0000039D 5D                      	  pop	ebp
+   423 0000039E C3                      	  ret
+   424                                  
+   425                                  loop_octal:  		;loop for octal
+   426 0000039F 53                      	  push 	ebx              
+   427 000003A0 6A05                    	  push 	dword 5
+   428 000003A2 E8(00000000)            	  call  malloc
+   429 000003A7 83C404                  	  add	esp,4
+   430 000003AA 5B                      	  pop 	ebx
    431                                  
-   432 000003A0 3B15[4C000000]          	  cmp 	dword edx, [BINARY_STR+12]
-   433 000003A6 0F84C3000000            	  je	push_3
-   434                                  
-   435 000003AC 3B15[50000000]          	  cmp 	dword edx, [BINARY_STR+16]
-   436 000003B2 0F84C8000000            	  je	push_4
-   437                                  
-   438 000003B8 3B15[54000000]          	  cmp 	dword edx, [BINARY_STR+20]
-   439 000003BE 0F84CD000000            	  je	push_5
+   432 000003AB BA00000000              	  mov	edx,0
+   433 000003B0 8A13                    	  mov 	dl,  [ebx]
+   434                                  	  
+   435 000003B2 80FA47                  	  cmp	byte dl,'G'	
+   436 000003B5 74D9                    	  je	out
+   437                                  	  
+   438 000003B7 83FE01                  	  cmp	esi,1
+   439 000003BA 74C1                    	  je	after_repair
    440                                  
-   441 000003C4 3B15[58000000]          	  cmp 	dword edx, [BINARY_STR+24]
-   442 000003CA 0F84D2000000            	  je	push_6
+   441 000003BC 80FA00                  	  cmp	byte dl,0	
+   442 000003BF 74CF                    	  je	out
    443                                  
-   444 000003D0 3B15[5C000000]          	  cmp 	dword edx, [BINARY_STR+28]
-   445 000003D6 0F84D7000000            	  je	push_7
-   446                                  
-   447 000003DC 3B15[60000000]          	  cmp 	dword edx, [BINARY_STR+32]
-   448 000003E2 0F84DC000000            	  je	push_8
-   449                                  
-   450 000003E8 3B15[64000000]          	  cmp 	dword edx, [BINARY_STR+36]
-   451 000003EE 0F84E1000000            	  je	push_9
+   444 000003C1 80FA37                  	  cmp	dl,'7'
+   445 000003C4 7E18                    	  jle	num_repair
+   446                                  	  
+   447                                  	  
+   448                                  octal:
+   449 000003C6 C605[6C000000]01        	  mov	byte [INPUTMODE],1
+   450 000003CD E940FCFFFF              	  jmp	calc
+   451                                  
    452                                  
-   453 000003F4 3B15[68000000]          	  cmp 	dword edx, [BINARY_STR+40]
-   454 000003FA 0F84E6000000            	  je	push_10
-   455                                  
-   456 00000400 3B15[6C000000]          	  cmp 	dword edx, [BINARY_STR+44]
-   457 00000406 0F84EB000000            	  je	push_11
-   458                                  
-   459 0000040C 3B15[70000000]          	  cmp 	dword edx, [BINARY_STR+48]
-   460 00000412 0F84F0000000            	  je	push_12
-   461                                  
-   462 00000418 3B15[74000000]          	  cmp 	dword edx, [BINARY_STR+52]
-   463 0000041E 0F84F5000000            	  je	push_13
-   464                                  
-   465 00000424 3B15[78000000]          	  cmp 	dword edx, [BINARY_STR+56]
-   466 0000042A 0F84FA000000            	  je	push_14
+   453                                  hexadecimal:
+   454 000003D2 C605[6C000000]00        	  mov	byte [INPUTMODE],0
+   455 000003D9 E934FCFFFF              	  jmp	calc
+   456                                  	  
+   457                                  
+   458                                  num_repair:			;reparing number from assci to decimal
+   459 000003DE 80FA30                  	  cmp	dl,'0'
+   460 000003E1 7D02                    	  jge	legal_num
+   461 000003E3 EB98                    	  jmp	after_repair
+   462                                  
+   463                                  
+   464                                  legal_num:	  
+   465 000003E5 80EA30                  	  sub	dl,NUM_REPAIR
+   466 000003E8 EB93                    	  jmp	after_repair
    467                                  
-   468 00000430 3B15[7C000000]          	  cmp 	dword edx, [BINARY_STR+60]
-   469 00000436 0F84FF000000            	  je	push_15
-   470                                  
-   471                                  push_0:
-   472 0000043C B200                    	  mov dl, 0
-   473 0000043E 8810                    	  mov	[eax], dl
-   474 00000440 8907                    	  mov	[edi],eax
-   475                                  
-   476 00000442 40                      	  inc	eax
-   477 00000443 83C304                  	  add	ebx, 4
-   478 00000446 89C7                    	  mov	edi,eax
-   479                                  
-   480 00000448 E913FFFFFF              	  jmp	loop_bin
-   481                                  
-   482                                  push_1:
-   483 0000044D B201                    	  mov dl, 1
-   484 0000044F 8810                    	  mov	[eax], dl
-   485 00000451 8907                    	  mov	[edi],eax
-   486                                  
-   487 00000453 40                      	  inc	eax
-   488 00000454 83C304                  	  add	ebx, 4
-   489 00000457 89C7                    	  mov	edi,eax
-   490                                  
-   491 00000459 E902FFFFFF              	  jmp	loop_bin
-   492                                  
-   493                                  push_2:
-   494 0000045E B202                    	  mov dl, 2
-   495 00000460 8810                    	  mov	[eax], dl
-   496 00000462 8907                    	  mov	[edi],eax
+   468                                  	  
+   469                                  xor:				;xor between to operands
+   470 000003EA C705[62010000]0000-     	  mov	dword [OPI1],0
+   471 000003F2 0000               
+   472 000003F4 C705[66010000]0000-     	  mov	dword [OPI2],0
+   473 000003FC 0000               
+   474 000003FE 803D[68000000]02                  cmp	byte [INDEX],2
+   475 00000405 0F8E9EFCFFFF            	  jle	error_argu
+   476 0000040B 8B35[68000000]          	  mov	esi,[INDEX]
+   477 00000411 4E                      	  dec	esi
+   478 00000412 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   479 00000419 B800000000              	  mov	eax,0
+   480                                  
+   481                                  op1_loop_xor:			;going through the first list and add the numbers to one array OPERAND1
+   482 0000041E BA00000000              	  mov   edx,0			
+   483 00000423 8A17                    	  mov	dl,[edi]		
+   484 00000425 8890[70000000]          	  mov	[OPERAND1+eax],dl	
+   485 0000042B 47                      	  inc	edi
+   486 0000042C 40                      	  inc	eax
+   487 0000042D 8B3F                    	  mov	edi,[edi]
+   488 0000042F 80FA47                  	  cmp	dl,'G'
+   489 00000432 75EA                    	  jne	op1_loop_xor
+   490                                  	  
+   491 00000434 48                      	  dec	eax
+   492 00000435 A3[62010000]            	  mov	[OPI1],eax	;displacement of operand1 to 'G'
+   493 0000043A 4E                      	  dec	esi
+   494 0000043B 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   495 00000442 B800000000              	  mov	eax,0
+   496 00000447 FE0D[68000000]          	  dec	byte [INDEX]	;"remove" old number from stack
    497                                  
-   498 00000464 40                      	  inc	eax
-   499 00000465 83C304                  	  add	ebx, 4
-   500 00000468 89C7                    	  mov	edi,eax
-   501                                  
-   502 0000046A E9F1FEFFFF              	  jmp	loop_bin
-   503                                  
-   504                                  push_3:
-   505 0000046F B203                    	  mov dl, 3
-   506 00000471 8810                    	  mov	[eax], dl
-   507 00000473 8907                    	  mov	[edi],eax
-   508                                  
-   509 00000475 40                      	  inc	eax
-   510 00000476 83C304                  	  add	ebx, 4
-   511 00000479 89C7                    	  mov	edi,eax
-   512                                  
-   513 0000047B E9E0FEFFFF              	  jmp	loop_bin
-   514                                  
-   515                                  push_4:
-   516 00000480 B204                    	  mov dl, 4
-   517 00000482 8810                    	  mov	[eax], dl
-   518 00000484 8907                    	  mov	[edi],eax
-   519                                  
-   520 00000486 40                      	  inc	eax
-   521 00000487 83C304                  	  add	ebx, 4
-   522 0000048A 89C7                    	  mov	edi,eax
-   523                                  
-   524 0000048C E9CFFEFFFF              	  jmp	loop_bin
-   525                                  
-   526                                  push_5:
-   527 00000491 B205                    	  mov dl, 5
-   528 00000493 8810                    	  mov	[eax], dl
-   529 00000495 8907                    	  mov	[edi],eax
-   530                                  
-   531 00000497 40                      	  inc	eax
-   532 00000498 83C304                  	  add	ebx, 4
-   533 0000049B 89C7                    	  mov	edi,eax
-   534                                  
-   535 0000049D E9BEFEFFFF              	  jmp	loop_bin
-   536                                  
-   537                                  push_6:
-   538 000004A2 B206                    	  mov dl, 6
-   539 000004A4 8810                    	  mov	[eax], dl
-   540 000004A6 8907                    	  mov	[edi],eax
-   541                                  
-   542 000004A8 40                      	  inc	eax
-   543 000004A9 83C304                  	  add	ebx, 4
-   544 000004AC 89C7                    	  mov	edi,eax
-   545                                  
-   546 000004AE E9ADFEFFFF              	  jmp	loop_bin
-   547                                  
-   548                                  push_7:
-   549 000004B3 B207                    	  mov dl, 7
-   550 000004B5 8810                    	  mov	[eax], dl
-   551 000004B7 8907                    	  mov	[edi],eax
-   552                                  
-   553 000004B9 40                      	  inc	eax
-   554 000004BA 83C304                  	  add	ebx, 4
-   555 000004BD 89C7                    	  mov	edi,eax
-   556                                  
-   557 000004BF E99CFEFFFF              	  jmp	loop_bin
-   558                                  
-   559                                  push_8:
-   560 000004C4 B208                    	  mov dl, 8
-   561 000004C6 8810                    	  mov	[eax], dl
-   562 000004C8 8907                    	  mov	[edi],eax
-   563                                  
-   564 000004CA 40                      	  inc	eax
-   565 000004CB 83C304                  	  add	ebx, 4
-   566 000004CE 89C7                    	  mov	edi,eax
-   567                                  
-   568 000004D0 E98BFEFFFF              	  jmp	loop_bin
-   569                                  
-   570                                  
-   571                                  push_9:
-   572 000004D5 B209                    	  mov dl, 9
-   573 000004D7 8810                    	  mov	[eax], dl
-   574 000004D9 8907                    	  mov	[edi],eax
-   575                                  
-   576 000004DB 40                      	  inc	eax
-   577 000004DC 83C304                  	  add	ebx, 4
-   578 000004DF 89C7                    	  mov	edi,eax
-   579                                  
-   580 000004E1 E97AFEFFFF              	  jmp	loop_bin
-   581                                  
-   582                                  
-   583                                  push_10:
-   584 000004E6 B20A                    	  mov dl, 10
-   585 000004E8 8810                    	  mov	[eax], dl
-   586 000004EA 8907                    	  mov	[edi],eax
-   587                                  
-   588 000004EC 40                      	  inc	eax
-   589 000004ED 83C304                  	  add	ebx, 4
-   590 000004F0 89C7                    	  mov	edi,eax
-   591                                  
-   592 000004F2 E969FEFFFF              	  jmp	loop_bin
-   593                                  
-   594                                  
-   595                                  push_11:
-   596 000004F7 B20B                    	  mov dl,11
-   597 000004F9 8810                    	  mov	[eax], dl
-   598 000004FB 8907                    	  mov	[edi],eax
-   599                                  
-   600 000004FD 40                      	  inc	eax
-   601 000004FE 83C304                  	  add	ebx, 4
-   602 00000501 89C7                    	  mov	edi,eax
-   603                                  
-   604 00000503 E958FEFFFF              	  jmp	loop_bin
-   605                                  
-   606                                  push_12:
-   607 00000508 B20C                    	  mov dl, 12
-   608 0000050A 8810                    	  mov	[eax], dl
-   609 0000050C 8907                    	  mov	[edi],eax
-   610                                  
-   611 0000050E 40                      	  inc	eax
-   612 0000050F 83C304                  	  add	ebx, 4
-   613 00000512 89C7                    	  mov	edi,eax
-   614                                  
-   615 00000514 E947FEFFFF              	  jmp	loop_bin
-   616                                  
-   617                                  push_13:
-   618 00000519 B20D                    	  mov dl, 13
-   619 0000051B 8810                    	  mov	[eax], dl
-   620 0000051D 8907                    	  mov	[edi],eax
-   621                                  
-   622 0000051F 40                      	  inc	eax
-   623 00000520 83C304                  	  add	ebx, 4
-   624 00000523 89C7                    	  mov	edi,eax
-   625                                  
-   626 00000525 E936FEFFFF              	  jmp	loop_bin
-   627                                  
-   628                                  push_14:
-   629 0000052A B20E                    	  mov dl, 14
-   630 0000052C 8810                    	  mov	[eax], dl
-   631 0000052E 8907                    	  mov	[edi],eax
-   632                                  
-   633 00000530 40                      	  inc	eax
-   634 00000531 83C304                  	  add	ebx, 4
-   635 00000534 89C7                    	  mov	edi,eax
-   636                                  
-   637 00000536 E925FEFFFF              	  jmp	loop_bin
-   638                                  
-   639                                  push_15:
-   640 0000053B B20F                    	  mov dl, 15
-   641 0000053D 8810                    	  mov	[eax], dl
-   642 0000053F 8907                    	  mov	[edi],eax
-   643                                  
-   644 00000541 40                      	  inc	eax
-   645 00000542 83C304                  	  add	ebx, 4
-   646 00000545 89C7                    	  mov	edi,eax
-   647                                  
-   648 00000547 E914FEFFFF              	  jmp	loop_bin
-   649                                  
-   650                                  
-   651                                  out_bin:    
-   652 0000054C B247                    	  mov	dl,'G'
-   653 0000054E 8810                    	  mov	[eax],dl
-   654 00000550 8907                    	  mov	[edi],eax
-   655                                  	  
-   656 00000552 40                      	  inc	eax
-   657 00000553 43                      	  inc	ebx
-   658 00000554 89C7                    	  mov	edi,eax
-   659                                  
-   660 00000556 61                      	  popa
-   661 00000557 89EC                    	  mov	esp, ebp	
-   662 00000559 5D                      	  pop	ebp
-   663 0000055A C3                      	  ret
-   664                                  
-   665                                  
-   666                                  octal:
-   667 0000055B C605[6C000000]01        	  mov	byte [INPUTMODE],1
-   668 00000562 E9ABFAFFFF              	  jmp	calc
-   669                                  
-   670                                  
-   671                                  hexadecimal:
-   672 00000567 C605[6C000000]00        	  mov	byte [INPUTMODE],0
-   673 0000056E E99FFAFFFF              	  jmp	calc
-   674                                  	  
-   675                                  
-   676                                  num_repair:
-   677 00000573 80FA30                  	  cmp	dl,'0'
-   678 00000576 7D05                    	  jge	legal_num
-   679 00000578 E9CAFDFFFF              	  jmp	after_repair
-   680                                  
-   681                                  
-   682                                  legal_num:	  
-   683 0000057D 80EA30                  	  sub	dl,NUM_REPAIR
-   684 00000580 E9C2FDFFFF              	  jmp	after_repair
-   685                                  
-   686                                  
+   498                                  op2_loop_xor:			;going through the second list and add the numbers to one array OPERAND2
+   499 0000044D BA00000000              	  mov   edx,0
+   500 00000452 8A17                    	  mov	dl,[edi]  
+   501 00000454 8890[C0000000]          	  mov	[OPERAND2+eax],dl
+   502 0000045A 47                      	  inc	edi
+   503 0000045B 40                      	  inc	eax
+   504 0000045C 8B3F                    	  mov	edi,[edi]
+   505 0000045E 80FA47                  	  cmp	dl,'G'
+   506 00000461 75EA                    	  jne	op2_loop_xor   
+   507                                  	  
+   508 00000463 48                      	  dec	eax
+   509 00000464 A3[66010000]            	  mov	[OPI2],eax	;displacement of operand2 to 'G'
+   510 00000469 FE0D[68000000]          	  dec	byte [INDEX]	;"remove" old number from stack
+   511                                  	  
+   512 0000046F A3[6A010000]            	  mov	[ANI],eax	; comparing the two sizes of OPI1 vs OPI2, and let the bigger be the size of answer
+   513 00000474 3B05[62010000]          	  cmp	eax,[OPI1]
+   514 0000047A 7D0A                    	  jge	build_ans_xor
+   515 0000047C A1[62010000]            	  mov	eax,[OPI1]
+   516 00000481 A3[6A010000]            	  mov	[ANI],eax
+   517                                  
+   518                                  build_ans_xor:
+   519 00000486 8B35[6A010000]          	  mov	esi,[ANI]
+   520 0000048C C686[10010000]47        	  mov	byte [ANSWER+esi],'G'
+   521 00000493 B900000000              	  mov	ecx,0
+   522                                  	  
+   523                                  xor_loop:
+   524 00000498 B800000000              	    mov	 eax,0 
+   525 0000049D BB00000000              	    mov	 ebx,0 
+   526 000004A2 FF0D[6A010000]          	    dec  dword [ANI]
+   527 000004A8 FF0D[62010000]          	    dec	 dword [OPI1]
+   528 000004AE FF0D[66010000]          	    dec	 dword [OPI2]
+   529 000004B4 833D[6A010000]00        	    cmp  dword [ANI],0
+   530 000004BB 7C32                    	    jl	 xor_out
+   531                                  	    
+   532 000004BD 8B35[62010000]          	    mov	 esi,[OPI1]
+   533 000004C3 83FE00                  	    cmp	 esi,0
+   534 000004C6 7C06                    	    jl	 xor_opi1_empty		
+   535                                  	    
+   536 000004C8 8A86[70000000]          	    mov  al,[OPERAND1+esi]	;OPPERAND1 is not empty yet
+   537                                  
+   538                                  xor_opi1_empty:
+   539 000004CE 8B35[66010000]          	    mov	 esi,[OPI2]
+   540 000004D4 83FE00                  	    cmp	 esi,0
+   541 000004D7 7C06                    	    jl	 xor_opi2_empty
+   542                                  	    
+   543 000004D9 8A9E[C0000000]          	    mov  bl,[OPERAND2+esi]	;OPPERAND1 is not empty yet
+   544                                  
+   545                                  xor_opi2_empty:			
+   546 000004DF 31D8                    	    xor  eax,ebx
+   547                                  	    
+   548 000004E1 8B35[6A010000]          	    mov	esi,[ANI]
+   549 000004E7 8886[10010000]          	    mov	[ANSWER+esi],al
+   550 000004ED EBA9                    	    jmp xor_loop
+   551                                  	
+   552                                  xor_out:				;creating a new link list with answer
+   553 000004EF BF00000000              	mov	edi,0
+   554 000004F4 BE00000000              	mov	esi,0
+   555 000004F9 8B35[68000000]          	mov	esi,[INDEX]
+   556 000004FF 6BF604                  	imul	esi,4
+   557 00000502 BF[50000000]                    mov	edi,STACK
+   558 00000507 01F7                            add	edi,esi
+   559 00000509 6A01                    	push	dword 1    
+   560 0000050B 68[10010000]            	push	ANSWER
+   561 00000510 57                      	push	edi
+   562 00000511 E8FDFDFFFF              	call	make_list
+   563 00000516 83C40C                  	add 	esp,12
+   564 00000519 FE05[68000000]          	inc	byte [INDEX]
+   565 0000051F E9EEFAFFFF              	jmp	calc
+   566                                  	
+   567                                  exponent:
+   568 00000524 BE00000000              	  mov	esi,0
+   569 00000529 8B35[68000000]          	  mov	esi,[INDEX]
+   570                                  	  
+   571 0000052F 83FE01                  	  cmp	esi,1		;checking that there's at least one number in stack
+   572 00000532 0F8E71FBFFFF            	  jle	error_argu
+   573                                  
+   574 00000538 4E                      	  dec	esi
+   575 00000539 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   576                                  	  
+   577 00000540 B800000000              	  mov 	eax,0		; counter for link value
+   578                                  	  
+   579                                  count_digits_loop:
+   580 00000545 BA00000000              	  mov   edx,0
+   581 0000054A 8A17                    	  mov	dl,[edi]
+   582 0000054C 80FA47                  	  cmp	dl,'G'
+   583 0000054F 7502                    	  jne	add_count
+   584 00000551 EB06                    	  jmp	calc_value
+   585                                  	  
+   586                                  add_count:
+   587 00000553 40                      	  inc	eax
+   588 00000554 47                      	  inc	edi
+   589 00000555 8B3F                    	  mov	edi,[edi]
+   590 00000557 EBEC                    	  jmp	count_digits_loop
+   591                                  	  
+   592                                  calc_value:
+   593 00000559 BF00000000              	  mov	edi,0
+   594 0000055E 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   595                                  
+   596 00000565 48                      	  dec	eax
+   597                                  	  
+   598                                  calc_loop:
+   599 00000566 B900000000              	  mov	ecx,0
+   600 0000056B BA00000000              	  mov   edx,0
+   601 00000570 8A17                    	  mov	dl,[edi]
+   602                                  	  
+   603 00000572 83F800                  	  cmp	eax,0
+   604 00000575 7C4C                    	  jl	calc_exponent
+   605                                  	  
+   606 00000577 803D[6C000000]01        	  cmp	byte [INPUTMODE],1
+   607 0000057E 7419                    	  je	calc_loop_octal
+   608                                  	  
+   609 00000580 BB01000000              	  mov	ebx,1
+   610 00000585 6BC804                  	  imul	ecx,eax,4
+   611                                  	  
+   612 00000588 D3E3                    	  shl	ebx,cl			;ebx = the 16^count
+   613                                  	  
+   614 0000058A 0FAFDA                  	  imul	ebx,edx			;get the true number in decimal
+   615                                  	  
+   616 0000058D 011D[6E010000]          	  add	[EXPONENT],ebx
+   617                                  	  
+   618 00000593 48                      	  dec	eax
+   619 00000594 47                      	  inc	edi
+   620 00000595 8B3F                    	  mov	edi,[edi]
+   621 00000597 EBCD                    	  jmp	calc_loop
+   622                                  	  
+   623                                  calc_loop_octal:
+   624                                  	  
+   625 00000599 B900000000              	  mov	ecx,0
+   626 0000059E BA00000000              	  mov   edx,0
+   627 000005A3 8A17                    	  mov	dl,[edi]
+   628                                  	  
+   629 000005A5 83F800                  	  cmp	eax,0
+   630 000005A8 7C19                    	  jl	calc_exponent
+   631                                  	  
+   632 000005AA BB01000000              	  mov	ebx,1
+   633 000005AF 6BC803                  	  imul	ecx,eax,3
+   634                                  	  
+   635 000005B2 D3E3                    	  shl	ebx,cl			;ebx = the 8^count
+   636                                  	  
+   637 000005B4 0FAFDA                  	  imul	ebx,edx			;get the true number in decimal
+   638                                  	  
+   639 000005B7 011D[6E010000]          	  add	[EXPONENT],ebx
+   640                                  	  
+   641 000005BD 48                      	  dec	eax
+   642 000005BE 47                      	  inc	edi
+   643 000005BF 8B3F                    	  mov	edi,[edi]
+   644 000005C1 EBD6                    	  jmp	calc_loop_octal
+   645                                  	  
+   646                                  calc_exponent:
+   647 000005C3 BB01000000              	  mov	ebx,1
+   648 000005C8 B900000000              	  mov	ecx,0
+   649 000005CD 8B0D[6E010000]          	  mov	ecx,[EXPONENT]
+   650 000005D3 D3E3                    	  shl	ebx,cl				; calculationg the 2^exponent
+   651                                  
+   652 000005D5 C605[9E010000]47        	  mov	byte[EXP_ANSWER+16],'G'		;put in the end of exponent answer 'G'
+   653 000005DC 891D[8E010000]          	  mov 	[EXP_ANSWER],ebx		;copying the answer into array
+   654                                  	    
+   655                                  build_exp_ans:
+   656 000005E2 BF00000000              	  mov	edi,0
+   657 000005E7 BE00000000              	  mov	esi,0
+   658 000005EC 8B35[68000000]          	  mov	esi,[INDEX]
+   659 000005F2 6BF604                  	  imul	esi,4
+   660 000005F5 BF[50000000]            	  mov	edi,STACK
+   661 000005FA 01F7                    	  add	edi,esi
+   662 000005FC 6A01                    	  push	dword 1
+   663 000005FE 68[8E010000]            	  push	EXP_ANSWER
+   664 00000603 57                      	  push	edi
+   665 00000604 E80AFDFFFF              	  call	make_list
+   666 00000609 83C40C                  	  add 	esp,12
+   667 0000060C FE05[68000000]          	  inc	byte [INDEX]
+   668                                  	  
+   669 00000612 C705[6E010000]0000-     	  mov   dword[EXPONENT],0    ;reset exponent
+   670 0000061A 0000               
+   671 0000061C C705[8E010000]0000-     	  mov   dword[EXP_ANSWER],0  ;reset answer
+   672 00000624 0000               
+   673                                  	  
+   674 00000626 E9E7F9FFFF              	  jmp	calc
+   675                                  	  	  
+   676                                  mul_octal:
+   677 0000062B 6BC802                  	  imul	ecx,eax,2
+   678 0000062E D3E2                    	  shl	edx,cl
+   679 00000630 010D[6E010000]          	  add	[EXPONENT],ecx
+   680                                  	  
+   681                                  free_stack:			;going through all elements in stack and deallocating all memory
+   682 00000636 BE00000000              	  mov	esi,0
+   683 0000063B 8B35[68000000]          	  mov	esi,[INDEX]
+   684                                  
+   685 00000641 83FE01                  	  cmp	esi,1		;checking that there's at least one number in stack
+   686 00000644 0F8E43FAFFFF            	  jle	continue
    687                                  
-   688                                  
-   689                                   
+   688 0000064A 4E                      	  dec	esi
+   689 0000064B 8B3CB5[50000000]        	  mov	edi,[STACK+4*esi]
+   690                                    
+   691                                  free_single_list:
+   692 00000652 BB00000000              	  mov   ebx,0
+   693 00000657 89FB                    	  mov	ebx,edi	
+   694 00000659 43                      	  inc 	ebx
+   695 0000065A 8B1B                    	  mov   ebx,[ebx]	;getting the next node address 
+   696                                  	
+   697 0000065C 60                      	  pusha			;saving all registers 
+   698                                  	  
+   699 0000065D 57                      	  push	edi		;free memory of node
+   700 0000065E E8(00000000)            	  call	free
+   701 00000663 83C404                  	  add	esp,4
+   702                                  	  
+   703 00000666 61                      	  popa			;restoring all registers
+   704                                  	  
+   705 00000667 BF00000000              	  mov 	edi,0
+   706 0000066C 89DF                    	  mov	edi, ebx
+   707 0000066E 8A17                     	  mov	dl,[edi] 	;getting first number in node
+   708                                  	  
+   709 00000670 80FA47                  	  cmp	dl,'G'		;checking if we are at end of linked list
+   710 00000673 75DD                    	  jne	free_single_list
+   711                                  	  
+   712 00000675 60                      	  pusha			;free last node
+   713 00000676 E8(00000000)            	  call	free
+   714 0000067B 61                      	  popa
+   715                                  	  
+   716 0000067C FE0D[68000000]          	  dec	byte [INDEX]
+   717                                  	  
+   718 00000682 EBB2                    	  jmp free_stack

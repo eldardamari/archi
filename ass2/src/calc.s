@@ -1,6 +1,8 @@
 %define	STACK_SIZE 6
 %define NUM_REPAIR 48
 %define CHAR_REPAIR 55
+%define	HEX_BASE 16
+%define OCTAL_BASE 8
 
 section	.rodata
 ERROR_OVERFLOW		DB	"Error: Stack Overflow. ",10,0
@@ -8,6 +10,7 @@ ERROR_ARGUMENTS		DB	"Error: Not Enough Arguments on Stack. ",10,0
 CALC 			DB	"calc:", 0	; Format string
 PRINT_C 		DB	"%X",0
 PRINT_O 		DB	"%o",0
+PRINT_D			DB	"%d",0
 NEWLINE 		DB	"",10,0
 
 section .data
@@ -24,8 +27,9 @@ ANSWER		RESB	82	;answer after calc
 OPI1		RESB	4	
 OPI2		RESB	4
 ANI		RESB 	4
-;EXPONENT	RESB	4	;saving the number that need to be operate on
-;EFLAG		RESB	4
+EXPONENT	RESB	32	;saving the number that needs to be calc
+EXP_ANSWER	RESB    40	;answer of exponent to be build as linked list
+
 
 section .text
 	align 16
@@ -78,14 +82,17 @@ calc:
 	
 	cmp	bl,'x'		;xor
 	je	xor
+	
+	cmp	bl,'^'		;exponent
+	je	exponent
 
 	jmp	push_number	;number from user
 
 
 quit:	
-;	jmp	free_stack
-;	
-;continue:
+	jmp	free_stack
+	
+continue:
 	popa				
 	mov	esp, ebp
 	pop	ebp
@@ -244,8 +251,7 @@ add_out:			;taking answer and adding to stack
 	call	make_list
 	add 	esp,12
 	inc	byte [INDEX]
-;	cmp	EFLAG,1
-;	je	exponent_loop		;keep looping to exponent
+
 	
 	jmp	calc
 
@@ -307,11 +313,9 @@ hex:
 	push	edx
 	push	PRINT_C
   
-
 Apush:
 	call	printf
 	add 	esp,8
-
   
 next_print:
 	inc	edi
@@ -347,7 +351,20 @@ make_list:			;making list - for storing all digits/letters in operands. ending l
 	  je	loop_octal
 
 
-loop1:				;hex loop
+loop1:			;hex loop
+	  mov	edx,0
+	  mov	dl,[ebx]
+
+	  cmp	byte dl,'0'	
+	  je    char_zero
+	  jmp loop
+	  
+char_zero:
+
+	  inc ebx
+	  jmp loop1
+
+loop:
 	  push 	ebx
 	  push 	dword 5
 	  call  malloc
@@ -537,70 +554,153 @@ xor_out:				;creating a new link list with answer
 	inc	byte [INDEX]
 	jmp	calc
 	
-;duplicate_exponent:
-;	  mov	esi,0
-;	  mov	esi,[INDEX]
-;	  
-;	  cmp	esi,1		;checking that there's at least one number in stack
-;	  jle	error_argu
-;
-;	  dec	esi
-;	  mov	edi,[STACK+4*esi]
-;	  
-;	  inc	esi
-;	  mov	[STACK+4*esi],edi
-;	  inc	byte [INDEX]
-;	  mov 	eax,0		; counter for link value
-;link_value:
-;	  mov   edx,0
-;	  mov	dl,[edi]  
-;	  add	eax,dl
-;	  inc	edi
-;	  mov	edi,[edi]
-;	  cmp	dl,'G'
-;	  jne	link_value
-;	  mov	EFLAG,1	  
-;exponent_loop:
+exponent:
+	  mov	esi,0
+	  mov	esi,[INDEX]
+	  
+	  cmp	esi,1		;checking that there's at least one number in stack
+	  jle	error_argu
 
-;free_stack:			;going through all elements in stack and deallocating all memory
-;	  mov	esi,0
-;	  mov	esi,[INDEX]
+	  dec	esi
+	  mov	edi,[STACK+4*esi]
+	  
+	  mov 	eax,0		; counter for link value
+	  
+count_digits_loop:
+	  mov   edx,0
+	  mov	dl,[edi]
+	  cmp	dl,'G'
+	  jne	add_count
+	  jmp	calc_value
+	  
+add_count:
+	  inc	eax
+	  inc	edi
+	  mov	edi,[edi]
+	  jmp	count_digits_loop
+	  
+calc_value:
+	  mov	edi,0
+	  mov	edi,[STACK+4*esi]
 
-;	  cmp	esi,1		;checking that there's at least one number in stack
-;	  jle	continue
-;
-;	  dec	esi
-;	  mov	edi,[STACK+4*esi]
+	  dec	eax
 	  
-;free_single_list:
-;	  mov   ebx,0
-;	  mov	ebx,edi		
-;	  inc   ebx		; getting the next node address 
+calc_loop:
+	  mov	ecx,0
+	  mov   edx,0
+	  mov	dl,[edi]
+	  
+	  cmp	eax,0
+	  jl	calc_exponent
+	  
+	  cmp	byte [INPUTMODE],1
+	  je	calc_loop_octal
+	  
+	  mov	ebx,1
+	  imul	ecx,eax,4
+	  
+	  shl	ebx,cl			;ebx = the 16^count
+	  
+	  imul	ebx,edx			;get the true number in decimal
+	  
+	  add	[EXPONENT],ebx
+	  
+	  dec	eax
+	  inc	edi
+	  mov	edi,[edi]
+	  jmp	calc_loop
+	  
+calc_loop_octal:
+	  
+	  mov	ecx,0
+	  mov   edx,0
+	  mov	dl,[edi]
+	  
+	  cmp	eax,0
+	  jl	calc_exponent
+	  
+	  mov	ebx,1
+	  imul	ecx,eax,3
+	  
+	  shl	ebx,cl			;ebx = the 8^count
+	  
+	  imul	ebx,edx			;get the true number in decimal
+	  
+	  add	[EXPONENT],ebx
+	  
+	  dec	eax
+	  inc	edi
+	  mov	edi,[edi]
+	  jmp	calc_loop_octal
+	  
+calc_exponent:
+	  mov	ebx,1
+	  mov	ecx,0
+	  mov	ecx,[EXPONENT]
+	  shl	ebx,cl				; calculationg the 2^exponent
 
-;	  push	ebx
+	  mov	byte[EXP_ANSWER+16],'G'		;put in the end of exponent answer 'G'
+	  mov 	[EXP_ANSWER],ebx		;copying the answer into array
+	    
+build_exp_ans:
+	  mov	edi,0
+	  mov	esi,0
+	  mov	esi,[INDEX]
+	  imul	esi,4
+	  mov	edi,STACK
+	  add	edi,esi
+	  push	dword 1
+	  push	EXP_ANSWER
+	  push	edi
+	  call	make_list
+	  add 	esp,12
+	  inc	byte [INDEX]
 	  
-;	  push	edi		; free memory of node
-;	  call	free
-;	  add	esp,4
+	  mov   dword[EXPONENT],0    ;reset exponent
+	  mov   dword[EXP_ANSWER],0  ;reset answer
 	  
-;	  pop	ebx
+	  jmp	calc
+	  	  
+mul_octal:
+	  imul	ecx,eax,2
+	  shl	edx,cl
+	  add	[EXPONENT],ecx
+	  
+free_stack:			;going through all elements in stack and deallocating all memory
+	  mov	esi,0
+	  mov	esi,[INDEX]
 
+	  cmp	esi,1		;checking that there's at least one number in stack
+	  jle	continue
+
+	  dec	esi
+	  mov	edi,[STACK+4*esi]
+  
+free_single_list:
+	  mov   ebx,0
+	  mov	ebx,edi	
+	  inc 	ebx
+	  mov   ebx,[ebx]	;getting the next node address 
+	
+	  pusha			;saving all registers 
 	  
-;	  mov 	edi,0
-;	  mov	edi, [ebx]
-;	  ;mov	ebx,0
- ;	  mov	dl,[edi] 
+	  push	edi		;free memory of node
+	  call	free
+	  add	esp,4
 	  
-;	  cmp	dl,'G'
-;	  jne	free_single_list
+	  popa			;restoring all registers
 	  
-	  ;push ecx
+	  mov 	edi,0
+	  mov	edi, ebx
+ 	  mov	dl,[edi] 	;getting first number in node
 	  
-;	  push	edi		;free last node
-;	  call	free
-;	  add 	esp,4
-;	  ;pop ecx
+	  cmp	dl,'G'		;checking if we are at end of linked list
+	  jne	free_single_list
 	  
-;	  dec	byte [INDEX]
+	  pusha			;free last node
+	  call	free
+	  popa
 	  
-;	  jmp free_stack
+	  dec	byte [INDEX]
+	  
+	  jmp free_stack
