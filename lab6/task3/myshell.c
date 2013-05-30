@@ -14,17 +14,17 @@
 #define STR_MAX 2048
 
 /*Fucntions declarations*/
-void execute(cmdLine *pCmdLine);
+void execute(cmdLine *pCmdLine,int pipe);
 void historylog(char** history,char* str,int* count_history);
 void printhistory(char** history, int* count_history);
 void freehistory(char** history, int* count_history);
 int checkForReplacment(cmdLine* pCmdLine,int i);
+void executeWithSinglePipe(cmdLine *pCmdLine);
 
 int main (int argc , char* argv[], char* envp[]) {
     
     /*Parameters*/
-    char *buf[PATH_MAX];
-    char *buf1[PATH_MAX];
+    char buf[PATH_MAX];
     char str[STR_MAX];
     cmdLine *command_struct;
     char **history;
@@ -34,6 +34,7 @@ int main (int argc , char* argv[], char* envp[]) {
     int arg_to_change = -1;
     char *substring;
     int arguments;
+    int working_with_pipes= 0;
 
     /* allocating fixed allocated memory for hisotry log*/
     history = (char**)malloc(10*sizeof(char*));
@@ -41,12 +42,12 @@ int main (int argc , char* argv[], char* envp[]) {
     
     /*Distrplaying a prompt - current directory
      * savig the current directory         */
-    *buf1 = getwd(buf);
+    getwd(buf);
 
     while (1)
     {
         /*Printing command path name in blue color*/
-        printf("\033[22;34m %s :> \033[0m", *buf1);
+        printf("\033[22;34m %s :> \033[0m", buf);
 
         fgets(str,STR_MAX,stdin);
 
@@ -76,8 +77,11 @@ int main (int argc , char* argv[], char* envp[]) {
 
         /*Parsing string line*/
         command_struct = parseCmdLines(str); 
-        /* printing */
-        printf("command_struct - next: %p \n", command_struct->next);
+        /* Checking if comand with one pipe*/
+        working_with_pipes = 0;
+        if (command_struct->next != NULL)
+            working_with_pipes = 1;
+        /*printf("command_struct - next: %p \n", command_struct->next);*/
         
         /*Will to use 'set' command?*/
         if(strcmp(command_struct->arguments[0],"set") == 0 && 
@@ -140,7 +144,7 @@ int main (int argc , char* argv[], char* envp[]) {
             }
             else {
                 freeCmdLines(command_struct);
-                *buf1 = getwd(buf);
+                getwd(buf);
                 continue;
             }
         }
@@ -148,7 +152,7 @@ int main (int argc , char* argv[], char* envp[]) {
             /*Checking for history command */
             if (strcmp(command_struct->arguments[0],"history") != 0){
                 /* ececuting */
-                execute(command_struct);
+                execute(command_struct,working_with_pipes);
                 /* deallocating struct command */
                 freeCmdLines(command_struct);
                 continue;
@@ -166,11 +170,15 @@ int main (int argc , char* argv[], char* envp[]) {
 }
 
 /*This function execute the parsed line with the execv system_call */
-void execute(cmdLine *pCmdLine) {
+void execute(cmdLine *pCmdLine,int with_pipe) {
 
+    if (with_pipe == 1){
+        executeWithSinglePipe(pCmdLine);
+        return;
+    }
+    
     int pipefd[2];
     pid_t pid;
-    char buf;
     int fd_input,fd_output;
 
     if(pipe(pipefd) == -1){
@@ -274,4 +282,124 @@ int checkForReplacment(cmdLine* pCmdLine,int i){
         if(pCmdLine->arguments[i][0] == '$')
             return i;
         return -1;
+}
+
+/*workig with single pipe*/
+void executeWithSinglePipe(cmdLine *pCmdLine){
+    
+    printf("in executeWithSinglePipe \n ");
+
+    int pipefd[2];
+    pid_t cpid;
+    pid_t cpid2;
+    int fd_input,fd_output;
+    int pipeOut_dup,pipeIn_dup;
+    cmdLine *nextcommand = pCmdLine->next;
+
+    if(pipe(pipefd) == -1){
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    /*in child number 1*/
+    if(!(cpid = fork())) {
+
+        /*lets check if need to use the redirectInput*/
+        if(pCmdLine->inputRedirect != NULL){
+            close(0);
+            fd_input = open(pCmdLine->inputRedirect,O_RDONLY, 0700);
+            if(fd_input== -1){
+                perror("input_fail");
+                exit(EXIT_FAILURE);
+            }
+        }
+        /*Handling redirectOutput*/
+        if(pCmdLine->outputRedirect != NULL){
+            close(1);
+            fd_output = open(pCmdLine->outputRedirect, O_CREAT | O_WRONLY , 0700);
+            if(fd_output == -1){
+                perror("output_fail");
+                exit(EXIT_FAILURE);
+            }
+            /*executing the program*/
+            if(execvp(pCmdLine->arguments[0],pCmdLine->arguments) == -1) {
+                perror("error with execvp");
+                _exit(EXIT_FAILURE);
+            }
+
+            /*Releasing allocated memory*/
+            freeCmdLines(pCmdLine);
+        }
+        else { 
+            close(1);
+            pipeOut_dup = dup(pipefd[1]);    /* [>duplicate the write-end of the pipe<]*/
+            if (pipeOut_dup == -1) {
+                perror("pipeOut_dup");
+                exit(EXIT_FAILURE);
+            }
+            close(pipefd[1]);
+
+            /*executing the program*/
+            if(execvp(pCmdLine->arguments[0],pCmdLine->arguments) == -1) {
+                perror("error with execvp");
+                _exit(EXIT_FAILURE);
+            }
+
+            /*Releasing allocated memory*/
+            freeCmdLines(pCmdLine);
+        }
+    }
+    else {
+
+        /*---Terminal - Father Number 1----*/
+        close(pipefd[1]);          /* [> Close unused write end <]*/
+
+        cpid2 = fork();
+        if (cpid2 == -1) {
+            perror("fork2");
+            exit(EXIT_FAILURE);
+        }
+        if (cpid2 == 0) { /*[>child # 2<] */  
+
+            /*Handling redirectInput*/
+        if(nextcommand->inputRedirect != NULL){
+            close(0);
+            fd_input = open(nextcommand->inputRedirect,O_RDONLY, 0700);
+            if(fd_input== -1){
+                perror("input_fail");
+                exit(EXIT_FAILURE);
+            }
+        }
+            /*Handling redirectOutput*/
+            if(nextcommand->outputRedirect != NULL){
+                close(1);
+                fd_output = open(nextcommand->outputRedirect, O_CREAT | O_WRONLY | O_APPEND, 0700);
+                if(fd_output == -1){
+                    perror("output_fail");
+                    exit(EXIT_FAILURE);
+                }
+        }
+            close(0);                        /*  [> closing the standard output<]*/
+            pipeIn_dup = dup(pipefd[0]);     /*[>duplicate the read-end of the pipe<]*/
+            if (pipeOut_dup == -1) {
+                perror("pipeOut_dup");
+                exit(EXIT_FAILURE);
+            }
+            close(pipefd[0]);
+
+            /*executing the program*/
+            if(execvp(nextcommand->arguments[0],nextcommand->arguments) == -1) {
+                perror("error with execvp child 2");
+                _exit(EXIT_FAILURE);
+        
+                /*Releasing allocated memory*/
+                freeCmdLines(pCmdLine);
+            }
+        } else { 
+            /*[>---Father Number 2----<]*/
+            close(pipefd[0]);       /*[> Close unused write end <]*/
+            waitpid(cpid,NULL,0);      /*[ Wait for child #1 <]*/
+            waitpid(cpid2,NULL,0);      /*[>[ Wait for child #2 <]<]*/
+        }
+    }
 }
