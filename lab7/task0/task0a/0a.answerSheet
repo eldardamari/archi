@@ -1,0 +1,20 @@
+-----Answer Sheet-----
+
+1. Where is the entry point specified, and what is its value?
+   -Specified in: ELF header.
+   - value: -0x80482e0, points to .txt section.
+
+2. How many sections are there in a.out?
+   - Number of sections: 34.
+
+3. What is the size of the .text section?
+   - size: 1b8
+
+4. Does the symbol _start occur in the file? If so, where is it mapped to in virtual memory?
+   - yes, _start start at: 0x080482e0
+
+5. Does the symbol main occur in the file? If so, where is it mapped to in virtual memory?
+   - yes, main start at: 0x08048388
+
+6. Where in the file does the code of function "main" start?
+   - offset from .txt of 388. (A8 deffirance).
