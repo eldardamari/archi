@@ -26,5 +26,3 @@ int *feedPipe(int **pipes, cmdLine *pCmdLine);
  * not have a sink pipe (as with more in our example), 
  * the function returns NULL.*/
 int *sinkPipe(int **pipes, cmdLine *pCmdLine);
-
-
