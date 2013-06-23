@@ -92,9 +92,10 @@ int main (int argc , char* argv[], char* envp[]) {
             working_with_pipes = 1;
             number_of_pipes = 0;
             number_of_pipes = howManyPipes(command_struct);
+            printf("Pipes: %d \n",number_of_pipes);
             pipesfd = createPipes(number_of_pipes);
-            /*printf("last command name %s\n",command_struct->arguments[0]);
-            printf("Pipesfd in place 0 [%d][%d]\n",pipesfd[0][0],pipesfd[0][1]);
+            /*printf("last command name %s\n",command_struct->arguments[0]);*/
+            /*printf("Pipesfd in place 0 [%d][%d]\n",pipesfd[0][0],pipesfd[0][1]);
             printf("Pipesfd in place 1 [%d][%d]\n",pipesfd[1][0],pipesfd[1][1]);*/
         }
 
@@ -190,6 +191,8 @@ int main (int argc , char* argv[], char* envp[]) {
 
 /*This function execute the parsed line with the execv system_call */
 void execute(cmdLine *pCmdLine) {
+
+    printf("regular exe \n");
 
     int pipefd[2];
     pid_t pid;
@@ -312,6 +315,7 @@ look in the for loop, the index of pipesfd array need to be collarated with comm
 in a good way*/
 void executeWithPipes(cmdLine *pCmdLine, int **pipesfd,int number_of_pipes) {
 
+    printf("exe with pipes \n");
     cmdLine *sinkCommand = pCmdLine;
     cmdLine *feedCommand  = pCmdLine->next;
     int pipeOut_dup;
@@ -347,7 +351,7 @@ void executeWithPipes(cmdLine *pCmdLine, int **pipesfd,int number_of_pipes) {
         if(sinkCommand->inputRedirect != NULL){
             close(0);
             fd_input = open(sinkCommand->inputRedirect,O_RDONLY, 0700);
-            if(fd_input== -1){
+            if(fd_input == -1){
                 perror("input_fail");
                 exit(EXIT_FAILURE);
             }
@@ -459,6 +463,7 @@ void executeWithPipes(cmdLine *pCmdLine, int **pipesfd,int number_of_pipes) {
 /*working with single line*/
 void executeWithSinglePipe(cmdLine *pCmdLine){
     
+    printf("in exe with single pipe\n");
     int pipefd[2];
     pid_t cpid;
     pid_t cpid2;
