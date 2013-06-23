@@ -45,7 +45,6 @@ void releasePipes(int **pipes, int nPipes) {
 
 int *feedPipe(int **pipes, cmdLine *pCmdLine) {
 
-    printf("in feedPipe\n");
     int index = pCmdLine->idx;
 
     if (index == 0)

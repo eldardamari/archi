@@ -92,7 +92,6 @@ int main (int argc , char* argv[], char* envp[]) {
             working_with_pipes = 1;
             number_of_pipes = 0;
             number_of_pipes = howManyPipes(command_struct);
-            printf("Pipes: %d \n",number_of_pipes);
             pipesfd = createPipes(number_of_pipes);
         }
 
