@@ -2,17 +2,17 @@
 all: run
 
 #Tool invocations
-#Executable "poly.c" depends on the files poly.o 
-run: poly.o
+#Executable "fixed_poly.c" depends on the files fixed_poly.o 
+run: fixed_poly.o
 	@echo 'Building target: run'
-	gcc -g -m32 -Wall -o run poly.o 
+	gcc -g -m32 -Wall -o run fixed_poly.o 
 	@echo 'Finished building target: run'
 	@echo ' '
 
 #Depends on the source
-poly.o: poly.c
-	gcc -g -Wall -ansi -c -m32 -o poly.o poly.c
+fixed_poly.o: fixed_poly.c
+	gcc -g -Wall -ansi -c -m32 -o fixed_poly.o fixed_poly.c
 
 #Clean the build directory
 clean: 
-	rm -rf poly.o run
+	rm -rf fixed_poly.o run

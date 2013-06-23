@@ -94,9 +94,6 @@ int main (int argc , char* argv[], char* envp[]) {
             number_of_pipes = howManyPipes(command_struct);
             printf("Pipes: %d \n",number_of_pipes);
             pipesfd = createPipes(number_of_pipes);
-            /*printf("last command name %s\n",command_struct->arguments[0]);*/
-            /*printf("Pipesfd in place 0 [%d][%d]\n",pipesfd[0][0],pipesfd[0][1]);
-            printf("Pipesfd in place 1 [%d][%d]\n",pipesfd[1][0],pipesfd[1][1]);*/
         }
 
         /*Will to use 'set' command?*/
@@ -315,153 +312,96 @@ look in the for loop, the index of pipesfd array need to be collarated with comm
 in a good way*/
 void executeWithPipes(cmdLine *pCmdLine, int **pipesfd,int number_of_pipes) {
 
-    printf("exe with pipes \n");
-    cmdLine *sinkCommand = pCmdLine;
-    cmdLine *feedCommand  = pCmdLine->next;
     int pipeOut_dup;
     int pipeIn_dup;
     pid_t cpid;
     pid_t cpid2;
     int index = 0;
-    int* sinkPipeForfisrtPrg;
-    int* feedPipeForSecondePrg;
     int fd_input,fd_output;
-    int notFirstPipe = 0;
     
  
-    for(index = 0 ; index < number_of_pipes ; index++) {
+    for(index = 0 ; index <= number_of_pipes ; index++) {
 
-        if (index = 1)
-            notFirstPipe = 1;
-        /*reset pid for cammands*/
-        cpid  = 0;
-        cpid2 = 0;
-
-        /*getting pipe for sink command*/
-        sinkPipeForfisrtPrg = sinkPipe(pipesfd,sinkCommand); 
-        /*getting pipe for feed command*/
-        feedPipeForSecondePrg = feedPipe(pipesfd,feedCommand); 
-
+        if (pCmdLine == NULL)
+            return;
     
-    /*-----test 1 -------*/
-    /*in child number 1*/
-    if(!(cpid = fork())) {
+        if(!(cpid = fork())) {
 
-        /*lets check if need to use the redirectInput*/
-        if(sinkCommand->inputRedirect != NULL){
+        /*[>lets check if need to use the redirectInput<]*/
+        if(pCmdLine->inputRedirect != NULL){
             close(0);
-            fd_input = open(sinkCommand->inputRedirect,O_RDONLY, 0700);
-            if(fd_input == -1){
-                perror("input_fail");
-                exit(EXIT_FAILURE);
-            }
-        }
-        /*Handling redirectOutput*/
-        if(sinkCommand->outputRedirect != NULL){
-            close(1);
-            fd_output = open(sinkCommand->outputRedirect, O_CREAT | O_WRONLY , 0700);
-            if(fd_output == -1){
-                perror("output_fail");
-                exit(EXIT_FAILURE);
-            }
-            /*executing the program*/
-            if(execvp(sinkCommand->arguments[0],sinkCommand->arguments) == -1) {
-                perror("error with execvp");
-                _exit(EXIT_FAILURE);
-            }
-
-            /*Releasing allocated memory*/
-            freeCmdLines(sinkCommand);
-        }
-        else { 
-            close(1);
-            pipeOut_dup = dup(sinkPipeForfisrtPrg[1]);    /* [>duplicate the write-end of the pipe<]*/
-            if (pipeOut_dup == -1) {
-                perror("pipeOut_dup");
-                exit(EXIT_FAILURE);
-            }
-            close(sinkPipeForfisrtPrg[1]);
-
-            /*executing the program*/
-            if(execvp(sinkCommand->arguments[0],sinkCommand->arguments) == -1) {
-                perror("error with execvp");
-                _exit(EXIT_FAILURE);
-            }
-
-            /*Releasing allocated memory*/
-            freeCmdLines(sinkCommand);
-        }
-    }
-    else {
-
-        /*---Terminal - Father Number 1---TODO shold not be closed-*/
-        /*close(feedPipeForSecondePrg[1]);          [> [> Close unused write end <]<]*/
-
-        cpid2 = fork();
-        if (cpid2 == -1) {
-            perror("fork2");
-            exit(EXIT_FAILURE);
-        }
-        if (cpid2 == 0) { /*[>child # 2<] */  
-
-            /*Handling redirectInput*/
-        if(feedCommand->inputRedirect != NULL){
-            close(0);
-            fd_input = open(feedCommand->inputRedirect,O_RDONLY, 0700);
+            fd_input = open(pCmdLine->inputRedirect,O_RDONLY, 0700);
             if(fd_input== -1){
                 perror("input_fail");
                 exit(EXIT_FAILURE);
             }
         }
-            /*Handling redirectOutput*/
-            if(feedCommand->outputRedirect != NULL){
-                close(1);
-                fd_output = open(feedCommand->outputRedirect, O_CREAT | O_WRONLY | O_APPEND, 0700);
-                if(fd_output == -1){
-                    perror("output_fail");
-                    exit(EXIT_FAILURE);
-                }
+
+        /*[>Handling redirectOutput<]*/
+        if(pCmdLine->outputRedirect != NULL){
+            close(1);
+            fd_output = open(pCmdLine->outputRedirect, O_CREAT | O_WRONLY , 0700);
+            if(fd_output == -1){
+                perror("output_fail");
+                exit(EXIT_FAILURE);
+            }
+            /*[>executing the program<]*/
+            if(execvp(pCmdLine->arguments[0],pCmdLine->arguments) == -1) {
+                perror("error with execvp");
+                _exit(EXIT_FAILURE);
+            }
+
+            /*[>Releasing allocated memory<]*/
+            freeCmdLines(pCmdLine);
         }
-            close(0);                        /*  [> closing the standard input<]*/
-            if(notFirstPipe){
-                pipeIn_dup = dup(sinkPipeForfisrtPrg[1]);    /* [>duplicate the write-end of the pipe<]*/
+        else { 
+
+            if(feedPipe(pipesfd,pCmdLine) != NULL) {
+                close(0);
+                pipeOut_dup = dup(feedPipe(pipesfd,pCmdLine)[0]);    /*[> [>duplicate the write-end of the pipe<]<]*/
                 if (pipeOut_dup == -1) {
                     perror("pipeOut_dup");
                     exit(EXIT_FAILURE);
                 }
-                close(sinkPipeForfisrtPrg[1]);
             }
-            else{
-            pipeIn_dup = dup(feedPipeForSecondePrg[0]);     /*[>duplicate the read-end of the pipe<]*/
-            if (pipeOut_dup == -1) {
-                perror("pipeOut_dup");
-                exit(EXIT_FAILURE);
+            
+            if(sinkPipe(pipesfd,pCmdLine) != NULL) {
+                close(1);
+                pipeIn_dup = dup(sinkPipe(pipesfd,pCmdLine)[1]);    /*[> [>duplicate the write-end of the pipe<]<]*/
+                if (pipeOut_dup == -1) {
+                    perror("pipeOut_dup");
+                    exit(EXIT_FAILURE);
+                }
             }
-            close(feedPipeForSecondePrg[0]);
-            }
-            /*executing the program*/
-            if(execvp(feedCommand->arguments[0],feedCommand->arguments) == -1) {
-                perror("error with execvp child 2");
+            /*[>executing the program<]*/
+            if(execvp(pCmdLine->arguments[0],pCmdLine->arguments) == -1) {
+                perror("error with execvp");
                 _exit(EXIT_FAILURE);
-        
-                /*Releasing allocated memory*/
-                freeCmdLines(pCmdLine);
             }
-        } else { 
-            /*[>---Father Number 2----<]*/
-            close(feedPipeForSecondePrg[0]);       /*[> Close unused write end <]*/
-            waitpid(cpid,NULL,0);      /*[ Wait for child #1 <]*/
-            waitpid(cpid2,NULL,0);      /*[>[ Wait for child #2 <]<]*/
+            /*[>Releasing allocated memory<]*/
+            freeCmdLines(pCmdLine);
         }
     }
-        sinkCommand = feedCommand;
-        feedCommand = feedCommand->next;
+    else {
+        
+        if(sinkPipe(pipesfd,pCmdLine) != NULL) {
+            close(sinkPipe(pipesfd,pCmdLine)[1]);
+        }
+
+        if( pCmdLine->blocking != 0){
+            waitpid(cpid,NULL,0);                          /*[>[ Wait for child #1 <]<]*/
+        } else {
+            waitpid(cpid,NULL,0);                          /*[>[ Wait for child #1 <]<]*/
+        }
+        pCmdLine = pCmdLine->next;
+    }
     }
 }
-/*------------end of test 1--------------------*/
 
 /*working with single line*/
 void executeWithSinglePipe(cmdLine *pCmdLine){
+
+    printf("in exe single pipe\n");
     
     printf("in exe with single pipe\n");
     int pipefd[2];
@@ -513,6 +453,8 @@ void executeWithSinglePipe(cmdLine *pCmdLine){
                 exit(EXIT_FAILURE);
             }
             close(pipefd[1]);
+            
+            printf("executing cmd in first child  %s \n",pCmdLine->arguments[0]);
 
             /*executing the program*/
             if(execvp(pCmdLine->arguments[0],pCmdLine->arguments) == -1) {
@@ -561,6 +503,8 @@ void executeWithSinglePipe(cmdLine *pCmdLine){
                 exit(EXIT_FAILURE);
             }
             close(pipefd[0]);
+            
+            printf("executing cmd in seconde child  %s \n",nextcommand->arguments[0]);
 
             /*executing the program*/
             if(execvp(nextcommand->arguments[0],nextcommand->arguments) == -1) {
